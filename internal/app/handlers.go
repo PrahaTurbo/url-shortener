@@ -10,7 +10,7 @@ import (
 func (a *application) Root(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		a.makeUrl(w, r)
+		a.makeURL(w, r)
 	case http.MethodGet:
 		a.getOrigin(w, r)
 	default:
@@ -19,7 +19,7 @@ func (a *application) Root(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *application) makeUrl(w http.ResponseWriter, r *http.Request) {
+func (a *application) makeURL(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
