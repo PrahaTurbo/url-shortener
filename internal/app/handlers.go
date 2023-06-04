@@ -29,17 +29,16 @@ func (a *application) makeURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urlID := generateID(6)
-	a.urls[urlID] = body
+	urlID := a.srv.SaveURL(body)
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("http://%s/%s", a.addr, urlID)))
 }
 
 func (a *application) getOrigin(w http.ResponseWriter, r *http.Request) {
-	url, ok := a.urls[r.URL.Path[1:]]
-	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
+	url, err := a.srv.GetURL(r.URL.Path[1:])
+	if err != nil {
+		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}
 

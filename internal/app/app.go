@@ -1,16 +1,27 @@
 package app
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+
+	cfg "github.com/PrahaTurbo/url-shortener/config"
+	srv "github.com/PrahaTurbo/url-shortener/internal/service"
+	s "github.com/PrahaTurbo/url-shortener/internal/storage"
+)
 
 type application struct {
 	urls map[string][]byte
 	addr string
+	srv  srv.Service
 }
 
-func NewApp() application {
+func NewApp(c cfg.Config) application {
 	return application{
 		urls: make(map[string][]byte),
-		addr: "localhost:8080",
+		addr: fmt.Sprintf("%s:%s", c.Host, c.Port),
+		srv: srv.Service{
+			DB: s.Storage{DB: make(map[string][]byte)},
+		},
 	}
 }
 
