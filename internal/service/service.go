@@ -1,7 +1,8 @@
 package service
 
 import (
-	"math/rand"
+	"crypto/sha256"
+	"encoding/base64"
 
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 )
@@ -11,7 +12,7 @@ type Service struct {
 }
 
 func (s *Service) SaveURL(url []byte) string {
-	id := s.generateID(6)
+	id := s.generateID(url)
 	s.DB.Put(id, url)
 
 	return id
@@ -21,12 +22,11 @@ func (s *Service) GetURL(id string) ([]byte, error) {
 	return s.DB.Get(id)
 }
 
-func (s *Service) generateID(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+func (s *Service) generateID(url []byte) string {
+	hasher := sha256.New()
+	hasher.Write(url)
+	hash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+	truncatedHash := hash[:6]
 
-	id := make([]byte, length)
-	for i := range id {
-		id[i] = charset[rand.Intn(len(charset))]
-	}
-	return string(id)
+	return truncatedHash
 }
