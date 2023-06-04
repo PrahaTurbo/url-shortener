@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 )
 
-func (a *application) Root(w http.ResponseWriter, r *http.Request) {
+func (a *application) rootHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		a.makeURL(w, r)
@@ -15,7 +14,6 @@ func (a *application) Root(w http.ResponseWriter, r *http.Request) {
 		a.getOrigin(w, r)
 	default:
 		w.WriteHeader(http.StatusBadRequest)
-		return
 	}
 }
 
@@ -31,21 +29,16 @@ func (a *application) makeURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urlID := genID(6)
+	urlID := generateID(6)
 	a.urls[urlID] = body
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("http://%s/%s", a.Addr, urlID)))
+	w.Write([]byte(fmt.Sprintf("http://%s/%s", a.addr, urlID)))
 }
 
 func (a *application) getOrigin(w http.ResponseWriter, r *http.Request) {
-	url, ok := a.urls[strings.Trim(r.URL.Path, "/")]
+	url, ok := a.urls[r.URL.Path[1:]]
 	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"log"
 	"math/rand"
-	"net/http"
 	"time"
 
 	"github.com/PrahaTurbo/url-shortener/internal/app"
@@ -13,9 +13,7 @@ func main() {
 
 	app := app.NewApp()
 
-	http.HandleFunc("/", app.Root)
-
-	if err := http.ListenAndServe(app.Addr, nil); err != nil {
-		panic(err)
+	if err := app.Start(); err != nil {
+		log.Fatal(err)
 	}
 }
