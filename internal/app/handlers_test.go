@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	"github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type storageMock struct {
@@ -80,22 +78,14 @@ func Test_application_makeURL(t *testing.T) {
 			w := httptest.NewRecorder()
 			app.makeURL(w, request)
 
-			result := w.Result()
+			assert.Equal(t, tt.want.statusCode, w.Code)
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
-
-			if result.StatusCode != http.StatusCreated {
+			if w.Code != http.StatusCreated {
 				return
 			}
 
-			assert.Equal(t, tt.want.contentType, result.Header.Get("Content-type"))
-
-			resultURL, err := io.ReadAll(result.Body)
-			require.NoError(t, err)
-			err = result.Body.Close()
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.want.reponse, string(resultURL))
+			assert.Equal(t, tt.want.contentType, w.Header().Get("Content-type"))
+			assert.Equal(t, tt.want.reponse, w.Body.String())
 		})
 	}
 }
@@ -143,20 +133,16 @@ func Test_application_getOrigin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
-
 			app.srv.URLs.Put(tt.urlID, []byte(tt.want.location))
-
 			app.getOrigin(w, request)
 
-			result := w.Result()
+			assert.Equal(t, tt.want.statusCode, w.Code)
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
-
-			if result.StatusCode != http.StatusTemporaryRedirect {
+			if w.Code != http.StatusTemporaryRedirect {
 				return
 			}
 
-			assert.Equal(t, tt.want.location, result.Header.Get("Location"))
+			assert.Equal(t, tt.want.location, w.Header().Get("Location"))
 		})
 	}
 }
@@ -210,12 +196,9 @@ func Test_application_rootHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.requestMethod, tt.request, nil)
 			w := httptest.NewRecorder()
-
 			app.rootHandler(w, request)
 
-			result := w.Result()
-
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
+			assert.Equal(t, tt.want.statusCode, w.Code)
 		})
 	}
 }
