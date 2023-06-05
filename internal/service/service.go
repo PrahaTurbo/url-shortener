@@ -8,18 +8,18 @@ import (
 )
 
 type Service struct {
-	DB storage.Storage
+	URLs storage.Repository
 }
 
 func (s *Service) SaveURL(url []byte) string {
 	id := s.generateID(url)
-	s.DB.Put(id, url)
+	s.URLs.Put(id, url)
 
 	return id
 }
 
 func (s *Service) GetURL(id string) ([]byte, error) {
-	return s.DB.Get(id)
+	return s.URLs.Get(id)
 }
 
 func (s *Service) generateID(url []byte) string {

@@ -10,17 +10,15 @@ import (
 )
 
 type application struct {
-	urls map[string][]byte
 	addr string
 	srv  srv.Service
 }
 
 func NewApp(c cfg.Config) application {
 	return application{
-		urls: make(map[string][]byte),
 		addr: fmt.Sprintf("%s:%s", c.Host, c.Port),
 		srv: srv.Service{
-			DB: s.Storage{DB: make(map[string][]byte)},
+			URLs: &s.Storage{DB: make(map[string][]byte)},
 		},
 	}
 }

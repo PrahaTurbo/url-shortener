@@ -25,12 +25,13 @@ func (a *application) makeURL(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	urlID := a.srv.SaveURL(body)
 
+	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf("http://%s/%s", a.addr, urlID)))
 }
@@ -38,7 +39,7 @@ func (a *application) makeURL(w http.ResponseWriter, r *http.Request) {
 func (a *application) getOrigin(w http.ResponseWriter, r *http.Request) {
 	url, err := a.srv.GetURL(r.URL.Path[1:])
 	if err != nil {
-		w.WriteHeader(http.StatusTemporaryRedirect)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 

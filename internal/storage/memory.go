@@ -4,6 +4,11 @@ import (
 	"fmt"
 )
 
+type Repository interface {
+	Put(id string, url []byte)
+	Get(id string) ([]byte, error)
+}
+
 type Storage struct {
 	DB map[string][]byte
 }
