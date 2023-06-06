@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +31,7 @@ func (s *storageMock) Get(id string) ([]byte, error) {
 	return url, nil
 }
 
-func Test_application_makeURL(t *testing.T) {
+func setupTestApp() application {
 	cfg := config.Config{Host: "localhost", Port: "8080"}
 	app := application{
 		addr: fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
@@ -37,6 +39,12 @@ func Test_application_makeURL(t *testing.T) {
 			URLs: &storageMock{db: make(map[string][]byte)},
 		},
 	}
+
+	return app
+}
+
+func Test_application_makeURL(t *testing.T) {
+	app := setupTestApp()
 
 	type want struct {
 		contentType string
@@ -76,7 +84,7 @@ func Test_application_makeURL(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 			w := httptest.NewRecorder()
-			app.makeURL(w, request)
+			app.makeURLHandler(w, request)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 
@@ -91,13 +99,7 @@ func Test_application_makeURL(t *testing.T) {
 }
 
 func Test_application_getOrigin(t *testing.T) {
-	cfg := config.Config{Host: "localhost", Port: "8080"}
-	app := application{
-		addr: fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
-		srv: service.Service{
-			URLs: &storageMock{db: make(map[string][]byte)},
-		},
-	}
+	app := setupTestApp()
 
 	type want struct {
 		location   string
@@ -131,10 +133,15 @@ func Test_application_getOrigin(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
+			r := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
+
+			chiCtx := chi.NewRouteContext()
+			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiCtx))
+			chiCtx.URLParams.Add("id", tt.request[1:])
+
 			app.srv.URLs.Put(tt.urlID, []byte(tt.want.location))
-			app.getOrigin(w, request)
+			app.getOriginHandler(w, r)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 
@@ -143,62 +150,6 @@ func Test_application_getOrigin(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.want.location, w.Header().Get("Location"))
-		})
-	}
-}
-
-func Test_application_rootHandler(t *testing.T) {
-	cfg := config.Config{Host: "localhost", Port: "8080"}
-	app := application{
-		addr: fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
-		srv: service.Service{
-			URLs: &storageMock{db: make(map[string][]byte)},
-		},
-	}
-	app.srv.URLs.Put("id", []byte("site.com"))
-
-	type want struct {
-		statusCode int
-	}
-
-	tests := []struct {
-		name          string
-		requestMethod string
-		request       string
-		want          want
-	}{
-		{
-			name:          "post routing",
-			requestMethod: http.MethodPost,
-			request:       "/",
-			want: want{
-				statusCode: http.StatusCreated,
-			},
-		},
-		{
-			name:          "get routing",
-			requestMethod: http.MethodGet,
-			request:       "/id",
-			want: want{
-				statusCode: http.StatusTemporaryRedirect,
-			},
-		},
-		{
-			name:          "wrong method",
-			requestMethod: http.MethodPut,
-			request:       "/",
-			want: want{
-				statusCode: http.StatusBadRequest,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(tt.requestMethod, tt.request, nil)
-			w := httptest.NewRecorder()
-			app.rootHandler(w, request)
-
-			assert.Equal(t, tt.want.statusCode, w.Code)
 		})
 	}
 }

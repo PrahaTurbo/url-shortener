@@ -24,7 +24,5 @@ func NewApp(c cfg.Config) application {
 }
 
 func (a *application) Start() error {
-	http.HandleFunc("/", a.rootHandler)
-
-	return http.ListenAndServe(a.addr, nil)
+	return http.ListenAndServe(a.addr, a.router())
 }

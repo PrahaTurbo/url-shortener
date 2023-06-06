@@ -4,20 +4,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
-func (a *application) rootHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost:
-		a.makeURL(w, r)
-	case http.MethodGet:
-		a.getOrigin(w, r)
-	default:
-		w.WriteHeader(http.StatusBadRequest)
-	}
-}
-
-func (a *application) makeURL(w http.ResponseWriter, r *http.Request) {
+func (a *application) makeURLHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -36,8 +27,8 @@ func (a *application) makeURL(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("http://%s/%s", a.addr, urlID)))
 }
 
-func (a *application) getOrigin(w http.ResponseWriter, r *http.Request) {
-	url, err := a.srv.GetURL(r.URL.Path[1:])
+func (a *application) getOriginHandler(w http.ResponseWriter, r *http.Request) {
+	url, err := a.srv.GetURL(chi.URLParam(r, "id"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
