@@ -32,9 +32,14 @@ func (s *storageMock) Get(id string) ([]byte, error) {
 }
 
 func setupTestApp() application {
-	cfg := config.Config{Host: "localhost", Port: "8080"}
+	cfg := config.Config{
+		Host:    "localhost",
+		Port:    "8080",
+		BaseURL: "localhost:8080",
+	}
 	app := application{
-		addr: fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
+		addr:    cfg.Host + ":" + cfg.Port,
+		baseURL: cfg.BaseURL,
 		srv: service.Service{
 			URLs: &storageMock{db: make(map[string][]byte)},
 		},
@@ -65,7 +70,7 @@ func Test_application_makeURL(t *testing.T) {
 			want: want{
 				contentType: "text/plain",
 				statusCode:  http.StatusCreated,
-				reponse:     fmt.Sprintf("http://%s/%s", app.addr, app.srv.SaveURL([]byte("https://yandex.ru"))),
+				reponse:     fmt.Sprintf("%s/%s", app.baseURL, app.srv.SaveURL([]byte("https://yandex.ru"))),
 			},
 		},
 		{

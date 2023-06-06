@@ -1,15 +1,32 @@
 package config
 
-const (
-	host = "localhost"
-	port = "8080"
+import (
+	"flag"
+	"log"
+	"net"
 )
 
 type Config struct {
-	Host string
-	Port string
+	Host    string
+	Port    string
+	BaseURL string
 }
 
-func New() Config {
-	return Config{Host: host, Port: port}
+func Load() Config {
+	var c Config
+
+	addr := flag.String("a", "localhost:8080", "input server address in a form host:port")
+	baseURL := flag.String("b", "localhost:8080", "base address for short url")
+	flag.Parse()
+
+	host, port, err := net.SplitHostPort(*addr)
+	if err != nil {
+		log.Fatal("error occured while parsing server address: ", err)
+	}
+
+	c.Host = host
+	c.Port = port
+	c.BaseURL = *baseURL
+
+	return c
 }

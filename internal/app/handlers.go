@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 
@@ -24,7 +23,7 @@ func (a *application) makeURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("http://%s/%s", a.addr, urlID)))
+	w.Write([]byte(a.baseURL + "/" + urlID))
 }
 
 func (a *application) getOriginHandler(w http.ResponseWriter, r *http.Request) {

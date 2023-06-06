@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	c := cfg.New()
+	c := cfg.Load()
 	app := app.NewApp(c)
 
 	if err := app.Start(); err != nil {
