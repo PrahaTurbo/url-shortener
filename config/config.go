@@ -16,7 +16,7 @@ func Load() Config {
 	var c Config
 
 	addr := flag.String("a", "localhost:8080", "input server address in a form host:port")
-	baseURL := flag.String("b", "localhost:8080", "base address for short url")
+	baseURL := flag.String("b", "http://localhost:8080", "base address for short url")
 	flag.Parse()
 
 	host, port, err := net.SplitHostPort(*addr)

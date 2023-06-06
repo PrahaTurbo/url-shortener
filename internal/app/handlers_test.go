@@ -35,7 +35,7 @@ func setupTestApp() application {
 	cfg := config.Config{
 		Host:    "localhost",
 		Port:    "8080",
-		BaseURL: "localhost:8080",
+		BaseURL: "http://localhost:8080",
 	}
 	app := application{
 		addr:    cfg.Host + ":" + cfg.Port,
