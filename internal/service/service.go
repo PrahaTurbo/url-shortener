@@ -12,6 +12,7 @@ type Service struct {
 }
 
 func (s *Service) SaveURL(url []byte) string {
+	// TODO Check if url has https or http prefix and add it if it doesn't
 	id := s.generateID(url)
 	s.URLs.Put(id, url)
 

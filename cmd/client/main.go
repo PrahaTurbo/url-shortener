@@ -14,7 +14,7 @@ import (
 func main() {
 
 	cfg := config.Load()
-	endpoint := "http://" + cfg.Host + ":" + cfg.Port
+	endpoint := "http://" + cfg.Addr
 
 	fmt.Println("Введите длинный URL")
 	reader := bufio.NewReader(os.Stdin)
@@ -32,7 +32,7 @@ func main() {
 		panic(err)
 	}
 
-	request.Header.Add("Conrent-Type", "application/x-www-form-urlencoded")
+	request.Header.Add("Content-Type", "plain/text")
 
 	response, err := client.Do(request)
 	if err != nil {

@@ -33,12 +33,11 @@ func (s *storageMock) Get(id string) ([]byte, error) {
 
 func setupTestApp() application {
 	cfg := config.Config{
-		Host:    "localhost",
-		Port:    "8080",
+		Addr:    "localhost:8080",
 		BaseURL: "http://localhost:8080",
 	}
 	app := application{
-		addr:    cfg.Host + ":" + cfg.Port,
+		addr:    cfg.Addr,
 		baseURL: cfg.BaseURL,
 		srv: service.Service{
 			URLs: &storageMock{db: make(map[string][]byte)},

@@ -2,13 +2,11 @@ package config
 
 import (
 	"flag"
-	"log"
-	"net"
+	"os"
 )
 
 type Config struct {
-	Host    string
-	Port    string
+	Addr    string
 	BaseURL string
 }
 
@@ -19,14 +17,20 @@ func Load() Config {
 	baseURL := flag.String("b", "http://localhost:8080", "base address for short url")
 	flag.Parse()
 
-	host, port, err := net.SplitHostPort(*addr)
-	if err != nil {
-		log.Fatal("error occured while parsing server address: ", err)
-	}
-
-	c.Host = host
-	c.Port = port
+	c.Addr = *addr
 	c.BaseURL = *baseURL
 
+	c.loadEnvVars()
+
 	return c
+}
+
+func (c *Config) loadEnvVars() {
+	if envServerAddr := os.Getenv("SERVER_ADDRESS"); envServerAddr != "" {
+		c.Addr = envServerAddr
+	}
+
+	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
+		c.BaseURL = envBaseURL
+	}
 }

@@ -17,7 +17,7 @@ type application struct {
 
 func NewApp(c cfg.Config) application {
 	return application{
-		addr:    c.Host + ":" + c.Port,
+		addr:    c.Addr,
 		baseURL: c.BaseURL,
 		srv: service.Service{
 			URLs: &s.Storage{DB: make(map[string][]byte)},
