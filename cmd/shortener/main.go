@@ -11,7 +11,7 @@ import (
 
 func main() {
 	c := cfg.Load()
-	if err := logger.Initialize("info"); err != nil {
+	if err := logger.Initialize(c.LogLevel); err != nil {
 		log.Fatal(err)
 	}
 	app := app.NewApp(c)
