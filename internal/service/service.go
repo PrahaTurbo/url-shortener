@@ -11,6 +11,10 @@ type Service struct {
 	URLs storage.Repository
 }
 
+func NewService() Service {
+	return Service{storage.NewStorage()}
+}
+
 func (s *Service) SaveURL(url []byte) string {
 	// TODO Check if url has https or http prefix and add it if it doesn't
 	id := s.generateID(url)

@@ -37,7 +37,7 @@ func setupTestApp() application {
 		BaseURL: "http://localhost:8080",
 	}
 	app := application{
-		addr:    cfg.Addr,
+		Addr:    cfg.Addr,
 		baseURL: cfg.BaseURL,
 		srv: service.Service{
 			URLs: &storageMock{db: make(map[string][]byte)},
