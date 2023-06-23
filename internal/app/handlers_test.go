@@ -179,7 +179,7 @@ func Test_application_jsonHandler(t *testing.T) {
 			request:     "/api/shorten",
 			requestBody: `{"url": "https://yandex.ru"}`,
 			want: want{
-				statusCode: http.StatusOK,
+				statusCode: http.StatusCreated,
 				response:   successBody,
 			},
 		},

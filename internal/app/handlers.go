@@ -49,6 +49,7 @@ func (a *application) jsonHandler(w http.ResponseWriter, r *http.Request) {
 
 	resp := models.Response{Result: a.baseURL + "/" + urlID}
 	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		logger.Log.Debug("error encoding response", zap.Error(err))
