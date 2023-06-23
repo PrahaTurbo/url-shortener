@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 
@@ -16,7 +17,7 @@ func main() {
 	}
 	app := app.NewApp(c)
 
-	log.Println("Running server on: ", app.Addr)
+	logger.Log.Info("Server is running", zap.String("address", app.Addr))
 	if err := http.ListenAndServe(app.Addr, app.Router()); err != nil {
 		log.Fatal(err)
 	}

@@ -53,7 +53,7 @@ func Test_application_makeURL(t *testing.T) {
 	type want struct {
 		contentType string
 		statusCode  int
-		reponse     string
+		response    string
 	}
 
 	tests := []struct {
@@ -69,7 +69,7 @@ func Test_application_makeURL(t *testing.T) {
 			want: want{
 				contentType: "text/plain",
 				statusCode:  http.StatusCreated,
-				reponse:     fmt.Sprintf("%s/%s", app.baseURL, app.srv.SaveURL([]byte("https://yandex.ru"))),
+				response:    app.baseURL + "/FgAJzm",
 			},
 		},
 		{
@@ -79,7 +79,7 @@ func Test_application_makeURL(t *testing.T) {
 			want: want{
 				contentType: "text/plain",
 				statusCode:  http.StatusBadRequest,
-				reponse:     "",
+				response:    "",
 			},
 		},
 	}
@@ -97,7 +97,7 @@ func Test_application_makeURL(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.want.contentType, w.Header().Get("Content-type"))
-			assert.Equal(t, tt.want.reponse, w.Body.String())
+			assert.Equal(t, tt.want.response, w.Body.String())
 		})
 	}
 }
@@ -154,6 +154,58 @@ func Test_application_getOrigin(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.want.location, w.Header().Get("Location"))
+		})
+	}
+}
+
+func Test_application_jsonHandler(t *testing.T) {
+	app := setupTestApp()
+
+	successBody := fmt.Sprintf(`{"result": "http://%s/FgAJzm"}`, app.Addr)
+
+	type want struct {
+		statusCode int
+		response   string
+	}
+
+	tests := []struct {
+		name        string
+		request     string
+		requestBody string
+		want        want
+	}{
+		{
+			name:        "post success",
+			request:     "/api/shorten",
+			requestBody: `{"url": "https://yandex.ru"}`,
+			want: want{
+				statusCode: http.StatusOK,
+				response:   successBody,
+			},
+		},
+		{
+			name:        "post unmarshal error",
+			request:     "/api/shorten",
+			requestBody: `{"urm": "https://yandex.ru"}`,
+			want: want{
+				statusCode: http.StatusBadRequest,
+				response:   "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := strings.NewReader(tt.requestBody)
+			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
+			w := httptest.NewRecorder()
+			app.jsonHandler(w, request)
+
+			assert.Equal(t, tt.want.statusCode, w.Code)
+
+			if tt.want.response != "" {
+				assert.JSONEq(t, tt.want.response, w.Body.String())
+			}
 		})
 	}
 }
