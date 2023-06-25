@@ -25,7 +25,7 @@ func (a *application) makeURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	urlID := a.srv.SaveURL(body)
 
-	w.Header().Set("content-type", "text/plain")
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(a.baseURL + "/" + urlID))
 }
