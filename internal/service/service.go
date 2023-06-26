@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/sha256"
 	"encoding/base64"
-
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 )
 
@@ -11,8 +10,8 @@ type Service struct {
 	URLs storage.Repository
 }
 
-func NewService() Service {
-	return Service{storage.NewStorage()}
+func NewService(storageFilePath string) Service {
+	return Service{storage.NewStorage(storageFilePath)}
 }
 
 func (s *Service) SaveURL(url []byte) string {

@@ -15,6 +15,6 @@ func NewApp(c cfg.Config) application {
 	return application{
 		Addr:    c.Addr,
 		baseURL: c.BaseURL,
-		srv:     service.NewService(),
+		srv:     service.NewService(c.StorageFilePath),
 	}
 }

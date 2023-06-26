@@ -6,9 +6,10 @@ import (
 )
 
 type Config struct {
-	Addr     string
-	BaseURL  string
-	LogLevel string
+	Addr            string
+	BaseURL         string
+	LogLevel        string
+	StorageFilePath string
 }
 
 func Load() Config {
@@ -17,11 +18,13 @@ func Load() Config {
 	addr := flag.String("a", "localhost:8080", "input server address in a form host:port")
 	baseURL := flag.String("b", "http://localhost:8080", "base address for short url")
 	logLevel := flag.String("l", "info", "log lever")
+	storageFilePath := flag.String("f", "/tmp/short-url-db.json", "path to storage file")
 	flag.Parse()
 
 	c.Addr = *addr
 	c.BaseURL = *baseURL
 	c.LogLevel = *logLevel
+	c.StorageFilePath = *storageFilePath
 
 	c.loadEnvVars()
 
@@ -35,5 +38,9 @@ func (c *Config) loadEnvVars() {
 
 	if envBaseURL := os.Getenv("BASE_URL"); envBaseURL != "" {
 		c.BaseURL = envBaseURL
+	}
+
+	if envStorageFilePath := os.Getenv("FILE_STORAGE_PATH"); envStorageFilePath != "" {
+		c.StorageFilePath = envStorageFilePath
 	}
 }
