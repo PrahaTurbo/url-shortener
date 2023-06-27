@@ -36,7 +36,7 @@ func NewStorage(filePath string) Repository {
 	if err := s.restoreFromFile(); err != nil {
 		logger.Log.Error("cannot restore url records from file", zap.Error(err))
 	}
-	
+
 	return s
 }
 
@@ -44,19 +44,22 @@ func (s *Storage) Put(id string, url []byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.db[id] = url
+	if _, ok := s.db[id]; !ok {
+		s.db[id] = url
 
-	record := urlRecord{
-		UUID:        uuid.New().String(),
-		ShortURL:    id,
-		OriginalURL: string(url),
-	}
+		if s.storageFilePath != "" {
+			record := urlRecord{
+				UUID:        uuid.New().String(),
+				ShortURL:    id,
+				OriginalURL: string(url),
+			}
 
-	if s.storageFilePath != "" {
-		if err := s.writeRecordToFile(record); err != nil {
-			logger.Log.Error("cannot write url record to file storage", zap.Error(err))
+			if err := s.writeRecordToFile(record); err != nil {
+				logger.Log.Error("cannot write url record to file storage", zap.Error(err))
+			}
 		}
 	}
+	
 }
 
 func (s *Storage) Get(id string) ([]byte, error) {
