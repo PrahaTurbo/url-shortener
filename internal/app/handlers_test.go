@@ -37,7 +37,7 @@ func setupTestApp() application {
 		BaseURL: "http://localhost:8080",
 	}
 	app := application{
-		Addr:    cfg.Addr,
+		addr:    cfg.Addr,
 		baseURL: cfg.BaseURL,
 		srv: service.Service{
 			URLs: &storageMock{db: make(map[string][]byte)},
@@ -161,7 +161,7 @@ func Test_application_getOrigin(t *testing.T) {
 func Test_application_jsonHandler(t *testing.T) {
 	app := setupTestApp()
 
-	successBody := fmt.Sprintf(`{"result": "http://%s/FgAJzm"}`, app.Addr)
+	successBody := fmt.Sprintf(`{"result": "http://%s/FgAJzm"}`, app.addr)
 
 	type want struct {
 		statusCode int

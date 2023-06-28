@@ -6,15 +6,19 @@ import (
 )
 
 type application struct {
-	Addr    string
+	addr    string
 	baseURL string
 	srv     service.Service
 }
 
-func NewApp(c cfg.Config) application {
+func NewApp(c cfg.Config, srv service.Service) application {
 	return application{
-		Addr:    c.Addr,
+		addr:    c.Addr,
 		baseURL: c.BaseURL,
-		srv:     service.NewService(c.StorageFilePath),
+		srv:     srv,
 	}
+}
+
+func (a *application) Addr() string {
+	return a.addr
 }

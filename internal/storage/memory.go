@@ -44,22 +44,11 @@ func (s *Storage) Put(id string, url []byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := s.db[id]; !ok {
-		s.db[id] = url
+	s.db[id] = url
 
-		if s.storageFilePath != "" {
-			record := urlRecord{
-				UUID:        uuid.New().String(),
-				ShortURL:    id,
-				OriginalURL: string(url),
-			}
-
-			if err := s.writeRecordToFile(record); err != nil {
-				logger.Log.Error("cannot write url record to file storage", zap.Error(err))
-			}
-		}
+	if err := s.writeRecordToFile(id, url); err != nil {
+		logger.Log.Error("cannot write url record to file storage", zap.Error(err))
 	}
-	
 }
 
 func (s *Storage) Get(id string) ([]byte, error) {
@@ -99,7 +88,17 @@ func (s *Storage) restoreFromFile() error {
 	return nil
 }
 
-func (s *Storage) writeRecordToFile(record urlRecord) error {
+func (s *Storage) writeRecordToFile(id string, url []byte) error {
+	if s.storageFilePath == "" {
+		return nil
+	}
+
+	record := urlRecord{
+		UUID:        uuid.New().String(),
+		ShortURL:    id,
+		OriginalURL: string(url),
+	}
+
 	f, err := os.OpenFile(s.storageFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
