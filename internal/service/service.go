@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/sha256"
 	"encoding/base64"
-
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 )
 
@@ -11,9 +10,18 @@ type Service struct {
 	URLs storage.Repository
 }
 
+func NewService(storage storage.Repository) Service {
+	return Service{storage}
+}
+
 func (s *Service) SaveURL(url []byte) string {
 	// TODO Check if url has https or http prefix and add it if it doesn't
 	id := s.generateID(url)
+
+	if _, err := s.GetURL(id); err == nil {
+		return id
+	}
+
 	s.URLs.Put(id, url)
 
 	return id

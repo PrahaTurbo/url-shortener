@@ -1,20 +1,20 @@
 package app
 
 import (
-	"time"
-
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/middleware"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
-func (a *application) router() chi.Router {
+func (a *application) Router() chi.Router {
 	r := chi.NewRouter()
 
-	r.Use(middleware.Timeout(60 * time.Second))
-	r.Use(middleware.Logger)
+	r.Use(logger.RequestLogger)
+	r.Use(middleware.Gzip)
 
 	r.Post("/", a.makeURLHandler)
 	r.Get("/{id}", a.getOriginHandler)
+	r.Post("/api/shorten", a.jsonHandler)
 
 	return r
 }
