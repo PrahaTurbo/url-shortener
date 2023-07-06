@@ -4,8 +4,8 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/database"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/memory"
-	"github.com/PrahaTurbo/url-shortener/internal/storage/sql"
 	"go.uber.org/zap"
 	"log"
 	"net/http"
@@ -26,11 +26,11 @@ func main() {
 	if c.DatabaseDSN == "" {
 		storage = memory.NewInMemStorage(c.StorageFilePath)
 	} else {
-		db, err := sql.OpenDB(c.DatabaseDSN)
+		db, err := database.OpenDB(c.DatabaseDSN)
 		if err != nil {
 			log.Fatal(err)
 		}
-		storage = sql.NewSQLStorage(db)
+		storage = database.NewSQLStorage(db)
 	}
 
 	service := service.NewService(storage)
