@@ -30,6 +30,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		defer db.Close()
+
 		storage = database.NewSQLStorage(db)
 	}
 
