@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/mock"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,23 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type storageMock struct {
-	db map[string][]byte
-}
-
-func (s *storageMock) Put(id string, url []byte) {
-	s.db[id] = url
-}
-
-func (s *storageMock) Get(id string) ([]byte, error) {
-	url, ok := s.db[id]
-	if !ok {
-		return nil, fmt.Errorf("no url for id: %s", id)
-	}
-
-	return url, nil
-}
-
 func setupTestApp() application {
 	cfg := config.Config{
 		Addr:    "localhost:8080",
@@ -40,7 +24,7 @@ func setupTestApp() application {
 		addr:    cfg.Addr,
 		baseURL: cfg.BaseURL,
 		srv: service.Service{
-			URLs: &storageMock{db: make(map[string][]byte)},
+			URLs: &mock.StorageMock{DB: make(map[string][]byte)},
 		},
 	}
 

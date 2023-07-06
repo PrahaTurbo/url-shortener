@@ -68,3 +68,12 @@ func (a *application) getOriginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", string(url))
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
+
+func (a *application) pingHandler(w http.ResponseWriter, r *http.Request) {
+	if err := a.srv.PingDB(); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

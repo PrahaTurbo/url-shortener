@@ -31,6 +31,10 @@ func (s *Service) GetURL(id string) ([]byte, error) {
 	return s.URLs.Get(id)
 }
 
+func (s *Service) PingDB() error {
+	return s.URLs.Ping()
+}
+
 func (s *Service) generateID(url []byte) string {
 	hasher := sha256.New()
 	hasher.Write(url)

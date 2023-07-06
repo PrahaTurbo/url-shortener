@@ -1,33 +1,16 @@
 package service
 
 import (
-	"fmt"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/mock"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type storageMock struct {
-	db map[string][]byte
-}
-
-func (s *storageMock) Put(id string, url []byte) {
-	s.db[id] = url
-}
-
-func (s *storageMock) Get(id string) ([]byte, error) {
-	url, ok := s.db[id]
-	if !ok {
-		return nil, fmt.Errorf("no url for id: %s", id)
-	}
-
-	return url, nil
-}
-
 func TestService_generateID(t *testing.T) {
 	s := &Service{
-		URLs: &storageMock{db: make(map[string][]byte)},
+		URLs: &mock.StorageMock{DB: make(map[string][]byte)},
 	}
 
 	tests := []struct {
@@ -60,7 +43,7 @@ func TestService_generateID(t *testing.T) {
 
 func TestService_SaveURL(t *testing.T) {
 	s := &Service{
-		URLs: &storageMock{db: make(map[string][]byte)},
+		URLs: &mock.StorageMock{DB: make(map[string][]byte)},
 	}
 
 	tests := []struct {
@@ -124,7 +107,7 @@ func TestService_GetURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Service{
-				URLs: &storageMock{db: map[string][]byte{"id": tt.want.url}},
+				URLs: &mock.StorageMock{DB: map[string][]byte{"id": tt.want.url}},
 			}
 
 			url, err := s.GetURL(tt.id)
