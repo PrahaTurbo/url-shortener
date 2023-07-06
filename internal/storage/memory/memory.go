@@ -18,7 +18,7 @@ type InMemStorage struct {
 	mu              sync.Mutex
 }
 
-func NewStorage(filePath string) storage.Repository {
+func NewInMemStorage(filePath string) storage.Repository {
 	s := &InMemStorage{
 		db:              make(map[string][]byte),
 		storageFilePath: filePath,

@@ -1,4 +1,4 @@
-package database
+package sql
 
 import (
 	"database/sql"
@@ -6,20 +6,20 @@ import (
 	"sync"
 )
 
-type SqlStorage struct {
+type SQLStorage struct {
 	db *sql.DB
 	mu sync.Mutex
 }
 
-func NewStorage(db *sql.DB) storage.Repository {
-	return &SqlStorage{db: db}
+func NewSQLStorage(db *sql.DB) storage.Repository {
+	return &SQLStorage{db: db}
 }
 
-func (s *SqlStorage) Put(id string, url []byte) {
+func (s *SQLStorage) Put(id string, url []byte) {
 
 }
 
-func (s *SqlStorage) Get(id string) ([]byte, error) {
+func (s *SQLStorage) Get(id string) ([]byte, error) {
 	return nil, nil
 }
 
@@ -36,6 +36,6 @@ func OpenDB(dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
-func (s *SqlStorage) Ping() error {
+func (s *SQLStorage) Ping() error {
 	return s.db.Ping()
 }
