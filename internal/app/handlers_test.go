@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTestApp() application {
+func setupTestApp(isSQL bool) application {
 	cfg := config.Config{
 		Addr:    "localhost:8080",
 		BaseURL: "http://localhost:8080",
@@ -24,7 +24,10 @@ func setupTestApp() application {
 		addr:    cfg.Addr,
 		baseURL: cfg.BaseURL,
 		srv: service.Service{
-			URLs: &mock.StorageMock{DB: make(map[string][]byte)},
+			URLs: &mock.StorageMock{
+				DB:    make(map[string][]byte),
+				IsSQL: isSQL,
+			},
 		},
 	}
 
@@ -32,7 +35,7 @@ func setupTestApp() application {
 }
 
 func Test_application_makeURL(t *testing.T) {
-	app := setupTestApp()
+	app := setupTestApp(false)
 
 	type want struct {
 		contentType string
@@ -87,7 +90,7 @@ func Test_application_makeURL(t *testing.T) {
 }
 
 func Test_application_getOrigin(t *testing.T) {
-	app := setupTestApp()
+	app := setupTestApp(false)
 
 	type want struct {
 		location   string
@@ -143,7 +146,7 @@ func Test_application_getOrigin(t *testing.T) {
 }
 
 func Test_application_jsonHandler(t *testing.T) {
-	app := setupTestApp()
+	app := setupTestApp(false)
 
 	successBody := fmt.Sprintf(`{"result": "http://%s/FgAJzm"}`, app.addr)
 
@@ -190,6 +193,41 @@ func Test_application_jsonHandler(t *testing.T) {
 			if tt.want.response != "" {
 				assert.JSONEq(t, tt.want.response, w.Body.String())
 			}
+		})
+	}
+}
+
+func Test_application_pingHandler(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+	}{
+		{
+			name:       "ping success",
+			statusCode: 200,
+		},
+		{
+			name:       "ping failed",
+			statusCode: 500,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var app application
+
+			if tt.statusCode == 200 {
+				app = setupTestApp(true)
+			} else {
+				app = setupTestApp(false)
+			}
+
+			r := httptest.NewRequest(http.MethodGet, "/ping", nil)
+			w := httptest.NewRecorder()
+
+			app.pingHandler(w, r)
+
+			assert.Equal(t, tt.statusCode, w.Code)
 		})
 	}
 }

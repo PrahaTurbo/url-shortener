@@ -1,9 +1,13 @@
 package mock
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type StorageMock struct {
-	DB map[string][]byte
+	DB    map[string][]byte
+	IsSQL bool
 }
 
 func (s *StorageMock) Put(id string, url []byte) {
@@ -20,5 +24,9 @@ func (s *StorageMock) Get(id string) ([]byte, error) {
 }
 
 func (s *StorageMock) Ping() error {
-	return nil
+	if s.IsSQL {
+		return nil
+	}
+
+	return errors.New("sql database wasn't setup")
 }
