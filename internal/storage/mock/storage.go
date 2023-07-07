@@ -6,18 +6,18 @@ import (
 )
 
 type StorageMock struct {
-	DB    map[string][]byte
+	DB    map[string]string
 	IsSQL bool
 }
 
-func (s *StorageMock) Put(id string, url []byte) {
+func (s *StorageMock) Put(id string, url string) {
 	s.DB[id] = url
 }
 
-func (s *StorageMock) Get(id string) ([]byte, error) {
+func (s *StorageMock) Get(id string) (string, error) {
 	url, ok := s.DB[id]
 	if !ok {
-		return nil, fmt.Errorf("no url for id: %s", id)
+		return "", fmt.Errorf("no url for id: %s", id)
 	}
 
 	return url, nil

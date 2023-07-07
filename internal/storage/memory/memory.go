@@ -13,14 +13,14 @@ import (
 )
 
 type InMemStorage struct {
-	db              map[string][]byte
+	db              map[string]string
 	storageFilePath string
 	mu              sync.Mutex
 }
 
 func NewInMemStorage(filePath string) storage.Repository {
 	s := &InMemStorage{
-		db:              make(map[string][]byte),
+		db:              make(map[string]string),
 		storageFilePath: filePath,
 	}
 
@@ -31,7 +31,7 @@ func NewInMemStorage(filePath string) storage.Repository {
 	return s
 }
 
-func (s *InMemStorage) Put(id string, url []byte) {
+func (s *InMemStorage) Put(id string, url string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -42,13 +42,13 @@ func (s *InMemStorage) Put(id string, url []byte) {
 	}
 }
 
-func (s *InMemStorage) Get(id string) ([]byte, error) {
+func (s *InMemStorage) Get(id string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	url, ok := s.db[id]
 	if !ok {
-		return nil, fmt.Errorf("no url for id: %s", id)
+		return "", fmt.Errorf("no url for id: %s", id)
 	}
 
 	return url, nil
@@ -68,7 +68,7 @@ func (s *InMemStorage) restoreFromFile() error {
 	}
 	defer f.Close()
 
-	s.db = make(map[string][]byte)
+	s.db = make(map[string]string)
 
 	dec := json.NewDecoder(f)
 	for dec.More() {
@@ -77,13 +77,13 @@ func (s *InMemStorage) restoreFromFile() error {
 			return err
 		}
 
-		s.db[record.ShortURL] = []byte(record.OriginalURL)
+		s.db[record.ShortURL] = record.OriginalURL
 	}
 
 	return nil
 }
 
-func (s *InMemStorage) writeRecordToFile(id string, url []byte) error {
+func (s *InMemStorage) writeRecordToFile(id string, url string) error {
 	if s.storageFilePath == "" {
 		return nil
 	}
@@ -91,7 +91,7 @@ func (s *InMemStorage) writeRecordToFile(id string, url []byte) error {
 	record := storage.URLRecord{
 		UUID:        uuid.New().String(),
 		ShortURL:    id,
-		OriginalURL: string(url),
+		OriginalURL: url,
 	}
 
 	f, err := os.OpenFile(s.storageFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)

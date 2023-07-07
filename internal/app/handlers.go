@@ -23,7 +23,7 @@ func (a *application) makeURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urlID := a.srv.SaveURL(body)
+	urlID := a.srv.SaveURL(string(body))
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
@@ -45,7 +45,7 @@ func (a *application) jsonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urlID := a.srv.SaveURL([]byte(req.URL))
+	urlID := a.srv.SaveURL(req.URL)
 
 	resp := models.Response{Result: a.baseURL + "/" + urlID}
 	w.Header().Set("content-type", "application/json")
@@ -65,11 +65,11 @@ func (a *application) getOriginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Location", string(url))
+	w.Header().Set("Location", url)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (a *application) pingHandler(w http.ResponseWriter, r *http.Request) {
+func (a *application) pingHandler(w http.ResponseWriter, _ *http.Request) {
 	if err := a.srv.PingDB(); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

@@ -25,7 +25,7 @@ func setupTestApp(isSQL bool) application {
 		baseURL: cfg.BaseURL,
 		srv: service.Service{
 			URLs: &mock.StorageMock{
-				DB:    make(map[string][]byte),
+				DB:    make(map[string]string),
 				IsSQL: isSQL,
 			},
 		},
@@ -131,7 +131,7 @@ func Test_application_getOrigin(t *testing.T) {
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiCtx))
 			chiCtx.URLParams.Add("id", tt.request[1:])
 
-			app.srv.URLs.Put(tt.urlID, []byte(tt.want.location))
+			app.srv.URLs.Put(tt.urlID, tt.want.location)
 			app.getOriginHandler(w, r)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)

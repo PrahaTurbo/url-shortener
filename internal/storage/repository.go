@@ -1,8 +1,8 @@
 package storage
 
 type Repository interface {
-	Put(id string, url []byte)
-	Get(id string) ([]byte, error)
+	Put(id string, url string)
+	Get(id string) (string, error)
 	Ping() error
 }
 

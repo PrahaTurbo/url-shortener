@@ -14,7 +14,7 @@ func NewService(storage storage.Repository) Service {
 	return Service{storage}
 }
 
-func (s *Service) SaveURL(url []byte) string {
+func (s *Service) SaveURL(url string) string {
 	// TODO Check if url has https or http prefix and add it if it doesn't
 	id := s.generateID(url)
 
@@ -27,7 +27,7 @@ func (s *Service) SaveURL(url []byte) string {
 	return id
 }
 
-func (s *Service) GetURL(id string) ([]byte, error) {
+func (s *Service) GetURL(id string) (string, error) {
 	return s.URLs.Get(id)
 }
 
@@ -35,9 +35,9 @@ func (s *Service) PingDB() error {
 	return s.URLs.Ping()
 }
 
-func (s *Service) generateID(url []byte) string {
+func (s *Service) generateID(url string) string {
 	hasher := sha256.New()
-	hasher.Write(url)
+	hasher.Write([]byte(url))
 	hash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 	truncatedHash := hash[:6]
 

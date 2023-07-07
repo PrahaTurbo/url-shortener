@@ -29,7 +29,7 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode
 }
 
-var Log *zap.Logger = zap.NewNop()
+var Log = zap.NewNop()
 
 func Initialize(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
