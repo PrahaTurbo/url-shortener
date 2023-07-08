@@ -6,13 +6,11 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"go.uber.org/zap"
-	"sync"
 	"time"
 )
 
 type SQLStorage struct {
 	db *sql.DB
-	mu sync.Mutex
 }
 
 func NewSQLStorage(db *sql.DB) storage.Repository {
