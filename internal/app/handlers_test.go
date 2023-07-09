@@ -47,6 +47,14 @@ func Test_application_makeURL(t *testing.T) {
 		GetURL(urlRecord.ShortURL).
 		Return(&urlRecord, nil)
 
+	s.EXPECT().
+		GetURL("FgAJzm").
+		Return(nil, errors.New("no url"))
+
+	s.EXPECT().
+		PutURL(gomock.Any()).
+		Return(nil)
+
 	app := setupTestApp(s)
 
 	type want struct {
@@ -62,13 +70,23 @@ func Test_application_makeURL(t *testing.T) {
 		want        want
 	}{
 		{
-			name:        "simple url",
+			name:        "save url that already in storage",
 			request:     "/",
 			requestBody: urlRecord.OriginalURL,
 			want: want{
 				contentType: "text/plain",
-				statusCode:  http.StatusCreated,
+				statusCode:  http.StatusConflict,
 				response:    baseURL + "/" + urlRecord.ShortURL,
+			},
+		},
+		{
+			name:        "save new url",
+			request:     "/",
+			requestBody: "https://yandex.ru",
+			want: want{
+				contentType: "text/plain",
+				statusCode:  http.StatusCreated,
+				response:    baseURL + "/FgAJzm",
 			},
 		},
 		{
@@ -184,9 +202,15 @@ func Test_application_jsonHandler(t *testing.T) {
 		GetURL(urlRecord.ShortURL).
 		Return(&urlRecord, nil)
 
-	app := setupTestApp(s)
+	s.EXPECT().
+		GetURL("FgAJzm").
+		Return(nil, errors.New("no url"))
 
-	successBody := fmt.Sprintf(`{"result": "%s/%s"}`, baseURL, urlRecord.ShortURL)
+	s.EXPECT().
+		PutURL(gomock.Any()).
+		Return(nil)
+
+	app := setupTestApp(s)
 
 	type want struct {
 		statusCode int
@@ -200,12 +224,21 @@ func Test_application_jsonHandler(t *testing.T) {
 		want        want
 	}{
 		{
-			name:        "post success",
+			name:        "save url that already in storage",
 			request:     "/api/shorten",
 			requestBody: fmt.Sprintf(`{"url": "%s"}`, urlRecord.OriginalURL),
 			want: want{
+				statusCode: http.StatusConflict,
+				response:   fmt.Sprintf(`{"result": "%s/%s"}`, baseURL, urlRecord.ShortURL),
+			},
+		},
+		{
+			name:        "save new url",
+			request:     "/api/shorten",
+			requestBody: `{"url": "https://yandex.ru"}`,
+			want: want{
 				statusCode: http.StatusCreated,
-				response:   successBody,
+				response:   fmt.Sprintf(`{"result": "%s/FgAJzm"}`, baseURL),
 			},
 		},
 		{

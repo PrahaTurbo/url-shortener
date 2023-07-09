@@ -22,11 +22,13 @@ func NewService(cfg config.Config, storage storage.Repository) Service {
 	}
 }
 
+var ErrAlready = errors.New("URL already in storage")
+
 func (s *Service) SaveURL(url string) (string, error) {
 	id := s.generateID(url)
 
 	if s.alreadyInStorage(id) {
-		return s.formURL(id), nil
+		return s.formURL(id), ErrAlready
 	}
 
 	r := storage.URLRecord{

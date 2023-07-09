@@ -23,13 +23,12 @@ func (s *SQLStorage) PutURL(url storage.URLRecord) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	stmt := `
+	query := `
 		INSERT INTO short_urls (id, short_url, original_url)
 		VALUES ($1, $2, $3)`
 
-	_, err := s.db.ExecContext(ctx, stmt, url.UUID, url.ShortURL, url.OriginalURL)
+	_, err := s.db.ExecContext(ctx, query, url.UUID, url.ShortURL, url.OriginalURL)
 	if err != nil {
-		logger.Log.Error("cannot instert into", zap.Error(err))
 		return err
 	}
 
@@ -70,12 +69,12 @@ func (s *SQLStorage) GetURL(shortURL string) (*storage.URLRecord, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	stmt := `
+	query := `
 		SELECT id, short_url, original_url 
 		FROM short_urls
 		WHERE short_url = $1`
 
-	row := s.db.QueryRowContext(ctx, stmt, shortURL)
+	row := s.db.QueryRowContext(ctx, query, shortURL)
 
 	var url storage.URLRecord
 	if err := row.Scan(&url.UUID, &url.ShortURL, &url.OriginalURL); err != nil {
@@ -107,15 +106,25 @@ func (s *SQLStorage) Ping() error {
 }
 
 func createTable(db *sql.DB) {
-	stmt := `
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		logger.Log.Fatal("cannot create db transaction", zap.Error(err))
+	}
+	defer tx.Rollback()
+
+	createQuery := `
 		CREATE TABLE IF NOT EXISTS short_urls (
 			id UUID,
 			short_url VARCHAR PRIMARY KEY,
   			original_url VARCHAR,
   			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`
+	tx.ExecContext(ctx, createQuery)
 
-	_, err := db.Exec(stmt)
-	if err != nil {
-		logger.Log.Fatal("cannot create table in database", zap.Error(err))
-	}
+	indexQuery := `CREATE UNIQUE INDEX original_url_idx ON short_urls (original_url)`
+	tx.ExecContext(ctx, indexQuery)
+
+	tx.Commit()
 }

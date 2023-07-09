@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
+	"github.com/PrahaTurbo/url-shortener/internal/service"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
@@ -23,14 +24,21 @@ func (a *application) makeURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var statusCode int
+
 	shortURL, err := a.srv.SaveURL(string(body))
-	if err != nil {
+	switch err {
+	case service.ErrAlready:
+		statusCode = http.StatusConflict
+	case nil:
+		statusCode = http.StatusCreated
+	default:
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(statusCode)
 	w.Write([]byte(shortURL))
 }
 
@@ -49,15 +57,23 @@ func (a *application) jsonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var statusCode int
+
 	shortURL, err := a.srv.SaveURL(req.URL)
-	if err != nil {
+	switch err {
+	case service.ErrAlready:
+		statusCode = http.StatusConflict
+	case nil:
+		statusCode = http.StatusCreated
+	default:
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	resp := models.Response{Result: shortURL}
 	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(statusCode)
+
+	resp := models.Response{Result: shortURL}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		logger.Log.Debug("error encoding response", zap.Error(err))

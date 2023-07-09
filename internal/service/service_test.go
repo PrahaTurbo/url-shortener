@@ -79,19 +79,22 @@ func TestService_SaveURL(t *testing.T) {
 	srv := setupService(s)
 
 	tests := []struct {
-		name string
-		url  string
-		want string
+		name    string
+		url     string
+		want    string
+		wantErr error
 	}{
 		{
-			name: "save url successfully",
-			url:  "https://yandex.ru",
-			want: baseURL + "/" + "FgAJzm",
+			name:    "save url successfully",
+			url:     "https://yandex.ru",
+			want:    baseURL + "/" + "FgAJzm",
+			wantErr: nil,
 		},
 		{
-			name: "don't save url that already in storage",
-			url:  urlRecord.OriginalURL,
-			want: baseURL + "/" + urlRecord.ShortURL,
+			name:    "don't save url that already in storage",
+			url:     urlRecord.OriginalURL,
+			want:    baseURL + "/" + urlRecord.ShortURL,
+			wantErr: ErrAlready,
 		},
 	}
 
@@ -99,9 +102,11 @@ func TestService_SaveURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			shortURL, err := srv.SaveURL(tt.url)
 
-			if assert.NoError(t, err) {
-				assert.Equal(t, tt.want, shortURL)
+			if tt.wantErr != nil {
+				assert.Equal(t, tt.wantErr, err)
 			}
+
+			assert.Equal(t, tt.want, shortURL)
 		})
 	}
 }
