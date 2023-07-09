@@ -2,8 +2,11 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/mock"
+	"go.uber.org/mock/gomock"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,27 +18,36 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTestApp(isSQL bool) application {
+var baseURL = "http://localhost:8080"
+
+func setupTestApp(mockStorage *mock.MockRepository) application {
 	cfg := config.Config{
 		Addr:    "localhost:8080",
-		BaseURL: "http://localhost:8080",
+		BaseURL: baseURL,
 	}
-	app := application{
-		addr:    cfg.Addr,
-		baseURL: cfg.BaseURL,
-		srv: service.Service{
-			Storage: &mock.StorageMock{
-				DB:    make(map[string]string),
-				IsSQL: isSQL,
-			},
-		},
-	}
+	srv := service.NewService(cfg, mockStorage)
 
-	return app
+	return application{
+		addr: cfg.Addr,
+		srv:  srv,
+	}
 }
 
 func Test_application_makeURL(t *testing.T) {
-	app := setupTestApp(false)
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	urlRecord := storage.URLRecord{
+		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
+		ShortURL:    "fpCk-c",
+		OriginalURL: "https://ya.ru",
+	}
+
+	s.EXPECT().
+		GetURL(urlRecord.ShortURL).
+		Return(&urlRecord, nil)
+
+	app := setupTestApp(s)
 
 	type want struct {
 		contentType string
@@ -52,17 +64,17 @@ func Test_application_makeURL(t *testing.T) {
 		{
 			name:        "simple url",
 			request:     "/",
-			requestBody: "https://yandex.ru",
+			requestBody: urlRecord.OriginalURL,
 			want: want{
 				contentType: "text/plain",
 				statusCode:  http.StatusCreated,
-				response:    app.baseURL + "/FgAJzm",
+				response:    baseURL + "/" + urlRecord.ShortURL,
 			},
 		},
 		{
 			name:        "unsupported request path",
 			request:     "/make-url",
-			requestBody: "https://yandex.ru",
+			requestBody: urlRecord.OriginalURL,
 			want: want{
 				contentType: "text/plain",
 				statusCode:  http.StatusBadRequest,
@@ -90,7 +102,24 @@ func Test_application_makeURL(t *testing.T) {
 }
 
 func Test_application_getOrigin(t *testing.T) {
-	app := setupTestApp(false)
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	urlRecord := storage.URLRecord{
+		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
+		ShortURL:    "fpCk-c",
+		OriginalURL: "https://ya.ru",
+	}
+
+	s.EXPECT().
+		GetURL(urlRecord.ShortURL).
+		Return(&urlRecord, nil)
+
+	s.EXPECT().
+		GetURL("Azcxc").
+		Return(nil, errors.New("no url"))
+
+	app := setupTestApp(s)
 
 	type want struct {
 		location   string
@@ -100,24 +129,21 @@ func Test_application_getOrigin(t *testing.T) {
 	tests := []struct {
 		name    string
 		request string
-		urlID   string
 		want    want
 	}{
 		{
 			name:    "success",
-			request: "/yAvfdS",
-			urlID:   "yAvfdS",
+			request: "/" + urlRecord.ShortURL,
 			want: want{
-				location:   "https://yandex.ru",
+				location:   urlRecord.OriginalURL,
 				statusCode: http.StatusTemporaryRedirect,
 			},
 		},
 		{
 			name:    "wrong url id",
-			request: "/yAvFbv",
-			urlID:   "Azcxc",
+			request: "/Azcxc",
 			want: want{
-				location:   "https://yandex.ru",
+				location:   "",
 				statusCode: http.StatusBadRequest,
 			},
 		},
@@ -131,7 +157,6 @@ func Test_application_getOrigin(t *testing.T) {
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiCtx))
 			chiCtx.URLParams.Add("id", tt.request[1:])
 
-			app.srv.Storage.PutURL(tt.urlID, tt.want.location)
 			app.getOriginHandler(w, r)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
@@ -146,9 +171,22 @@ func Test_application_getOrigin(t *testing.T) {
 }
 
 func Test_application_jsonHandler(t *testing.T) {
-	app := setupTestApp(false)
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
 
-	successBody := fmt.Sprintf(`{"result": "http://%s/FgAJzm"}`, app.addr)
+	urlRecord := storage.URLRecord{
+		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
+		ShortURL:    "fpCk-c",
+		OriginalURL: "https://ya.ru",
+	}
+
+	s.EXPECT().
+		GetURL(urlRecord.ShortURL).
+		Return(&urlRecord, nil)
+
+	app := setupTestApp(s)
+
+	successBody := fmt.Sprintf(`{"result": "%s/%s"}`, baseURL, urlRecord.ShortURL)
 
 	type want struct {
 		statusCode int
@@ -164,7 +202,7 @@ func Test_application_jsonHandler(t *testing.T) {
 		{
 			name:        "post success",
 			request:     "/api/shorten",
-			requestBody: `{"url": "https://yandex.ru"}`,
+			requestBody: fmt.Sprintf(`{"url": "%s"}`, urlRecord.OriginalURL),
 			want: want{
 				statusCode: http.StatusCreated,
 				response:   successBody,
@@ -198,32 +236,42 @@ func Test_application_jsonHandler(t *testing.T) {
 }
 
 func Test_application_pingHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
 	tests := []struct {
 		name       string
 		statusCode int
+		fail       bool
 	}{
 		{
 			name:       "ping success",
 			statusCode: 200,
+			fail:       false,
 		},
 		{
 			name:       "ping failed",
 			statusCode: 500,
+			fail:       true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var app application
-
-			if tt.statusCode == 200 {
-				app = setupTestApp(true)
-			} else {
-				app = setupTestApp(false)
-			}
-
 			r := httptest.NewRequest(http.MethodGet, "/ping", nil)
 			w := httptest.NewRecorder()
+
+			if tt.fail {
+				s.EXPECT().
+					Ping().
+					Return(errors.New("no sql database"))
+			} else {
+				s.EXPECT().
+					Ping().
+					Return(nil)
+			}
+			
+			app := setupTestApp(s)
 
 			app.pingHandler(w, r)
 
