@@ -14,9 +14,10 @@ type SQLStorage struct {
 }
 
 func NewSQLStorage(db *sql.DB) storage.Repository {
-	createTable(db)
+	s := &SQLStorage{db: db}
+	s.createTable()
 
-	return &SQLStorage{db: db}
+	return s
 }
 
 func (s *SQLStorage) PutURL(url storage.URLRecord) error {
@@ -105,11 +106,11 @@ func (s *SQLStorage) Ping() error {
 	return s.db.Ping()
 }
 
-func createTable(db *sql.DB) {
+func (s *SQLStorage) createTable() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		logger.Log.Fatal("cannot create db transaction", zap.Error(err))
 	}
