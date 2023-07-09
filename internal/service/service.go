@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
@@ -46,6 +47,10 @@ func (s *Service) SaveBatch(batch []models.BatchRequest) ([]models.BatchResponse
 	response := make([]models.BatchResponse, 0, len(batch))
 
 	for _, req := range batch {
+		if req.OriginalURL == "" {
+			return nil, errors.New("no url in original_url field")
+		}
+
 		id := s.generateID(req.OriginalURL)
 
 		var res models.BatchResponse

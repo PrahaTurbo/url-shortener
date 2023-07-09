@@ -11,10 +11,12 @@ import (
 	"testing"
 )
 
+var baseURL = "localhost:8080"
+
 func setupService(mockStorage *mock.MockRepository) Service {
 	return Service{
 		Storage: mockStorage,
-		baseURL: "localhost:8080",
+		baseURL: baseURL,
 	}
 }
 
@@ -84,12 +86,12 @@ func TestService_SaveURL(t *testing.T) {
 		{
 			name: "save url successfully",
 			url:  "https://yandex.ru",
-			want: srv.baseURL + "/" + "FgAJzm",
+			want: baseURL + "/" + "FgAJzm",
 		},
 		{
 			name: "don't save url that already in storage",
 			url:  urlRecord.OriginalURL,
-			want: srv.baseURL + "/" + urlRecord.ShortURL,
+			want: baseURL + "/" + urlRecord.ShortURL,
 		},
 	}
 
@@ -168,81 +170,109 @@ func TestService_GetURL(t *testing.T) {
 	}
 }
 
-//
-//func TestService_SaveBatch(t *testing.T) {
-//	ctrl := gomock.NewController(t)
-//	s := mock.NewMockRepository(ctrl)
-//
-//	urlRecord := storage.URLRecord{
-//		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
-//		ShortURL:    "fpCk-c",
-//		OriginalURL: "https://ya.ru",
-//	}
-//
-//	s.EXPECT().
-//		PutBatchURLs(gomock.Any()).
-//		Return(nil)
-//
-//	s.EXPECT().
-//		GetURL(urlRecord.ShortURL).
-//		Return(&urlRecord, nil)
-//
-//	s.EXPECT().
-//		GetURL("FgAJzm").
-//		Return(nil, errors.New("no url"))
-//
-//	srv := setupService(s)
-//
-//	tests := []struct {
-//		name  string
-//		batch []models.BatchRequest
-//		want  []models.BatchResponse
-//	}{
-//		{
-//			name: "save batch successfully",
-//			batch: []models.BatchRequest{
-//				{
-//					CorrelationID: "1",
-//					OriginalURL:   "https://ya.ru",
-//				},
-//				{
-//					CorrelationID: "2",
-//					OriginalURL:   "https://yandex.ru",
-//				},
-//			},
-//			want: []models.BatchResponse{
-//				{
-//					CorrelationID: "1",
-//					ShortURL:      "https://ya.ru",
-//				},
-//				{
-//					CorrelationID: "2",
-//					ShortURL:      "https://yandex.ru",
-//				},
-//			},
-//		},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			shortURL, err := srv.SaveURL(tt.url)
-//
-//			if assert.NoError(t, err) {
-//				assert.Equal(t, tt.want, shortURL)
-//			}
-//		})
-//	}
-//}
+func TestService_SaveBatch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
 
-func formBatchRequest() []models.BatchRequest {
-	return []models.BatchRequest{
+	s.EXPECT().
+		GetURL(gomock.Any()).
+		Return(nil, errors.New("no url")).AnyTimes()
+
+	srv := setupService(s)
+
+	tests := []struct {
+		name    string
+		batch   []models.BatchRequest
+		want    []models.BatchResponse
+		wantErr bool
+	}{
 		{
-			CorrelationID: "1",
-			OriginalURL:   "https://ya.ru",
+			name: "save batch successfully",
+			batch: []models.BatchRequest{
+				{
+					CorrelationID: "1",
+					OriginalURL:   "https://ya.ru",
+				},
+				{
+					CorrelationID: "2",
+					OriginalURL:   "https://yandex.ru",
+				},
+			},
+			want: []models.BatchResponse{
+				{
+					CorrelationID: "1",
+					ShortURL:      baseURL + "/fpCk-c",
+				},
+				{
+					CorrelationID: "2",
+					ShortURL:      baseURL + "/FgAJzm",
+				},
+			},
+			wantErr: false,
 		},
 		{
-			CorrelationID: "2",
-			OriginalURL:   "https://yandex.ru",
+			name: "save batch failed",
+			batch: []models.BatchRequest{
+				{
+					CorrelationID: "1",
+					OriginalURL:   "https://ya.ru",
+				},
+				{
+					CorrelationID: "2",
+					OriginalURL:   "https://yandex.ru",
+				},
+			},
+			want:    nil,
+			wantErr: true,
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.wantErr {
+				s.EXPECT().
+					PutBatchURLs(gomock.Any()).
+					Return(errors.New("cannot save batch urls"))
+			} else {
+				s.EXPECT().
+					PutBatchURLs(gomock.Any()).
+					Return(nil)
+			}
+
+			resp, err := srv.SaveBatch(tt.batch)
+
+			if tt.wantErr {
+				assert.NotEmpty(t, err)
+				return
+			}
+
+			if assert.NoError(t, err) {
+				assert.Equal(t, tt.want, resp)
+			}
+		})
+	}
+}
+
+func TestService_formURL(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	srv := setupService(s)
+
+	tests := []struct {
+		name string
+		id   string
+		want string
+	}{
+		{
+			name: "successfully form short url",
+			id:   "dfdvFd",
+			want: baseURL + "/" + "dfdvFd",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, srv.formURL(tt.id))
+		})
 	}
 }

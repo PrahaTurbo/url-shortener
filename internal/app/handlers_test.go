@@ -270,12 +270,74 @@ func Test_application_pingHandler(t *testing.T) {
 					Ping().
 					Return(nil)
 			}
-			
+
 			app := setupTestApp(s)
 
 			app.pingHandler(w, r)
 
 			assert.Equal(t, tt.statusCode, w.Code)
+		})
+	}
+}
+
+func Test_application_batchHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	s.EXPECT().
+		GetURL(gomock.Any()).
+		Return(nil, errors.New("no url")).AnyTimes()
+
+	s.EXPECT().PutBatchURLs(gomock.Any()).
+		Return(nil).AnyTimes()
+
+	app := setupTestApp(s)
+
+	successBody := fmt.Sprintf(`[{"correlation_id": "1", "short_url": "%s/fpCk-c"}]`, baseURL)
+
+	type want struct {
+		statusCode int
+		response   string
+	}
+
+	tests := []struct {
+		name        string
+		request     string
+		requestBody string
+		want        want
+	}{
+		{
+			name:        "post success",
+			request:     "/api/shorten/batch",
+			requestBody: `[{"correlation_id": "1", "original_url": "https://ya.ru"}]`,
+			want: want{
+				statusCode: http.StatusCreated,
+				response:   successBody,
+			},
+		},
+		{
+			name:        "post unmarshal error",
+			request:     "/api/shorten/batch",
+			requestBody: `[{"correlation_id": "1", "url": "https://ya.ru"}]`,
+			want: want{
+				statusCode: http.StatusInternalServerError,
+				response:   "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := strings.NewReader(tt.requestBody)
+			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
+			w := httptest.NewRecorder()
+			app.batchHandler(w, request)
+
+			assert.Equal(t, tt.want.statusCode, w.Code)
+
+			if tt.want.response != "" {
+				assert.JSONEq(t, tt.want.response, w.Body.String())
+			}
 		})
 	}
 }

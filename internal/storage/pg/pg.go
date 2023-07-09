@@ -66,7 +66,7 @@ func (s *SQLStorage) PutBatchURLs(urls []storage.URLRecord) error {
 	return tx.Commit()
 }
 
-func (s *SQLStorage) GetURL(shortUrl string) (*storage.URLRecord, error) {
+func (s *SQLStorage) GetURL(shortURL string) (*storage.URLRecord, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
@@ -75,7 +75,7 @@ func (s *SQLStorage) GetURL(shortUrl string) (*storage.URLRecord, error) {
 		FROM short_urls
 		WHERE short_url = $1`
 
-	row := s.db.QueryRowContext(ctx, stmt, shortUrl)
+	row := s.db.QueryRowContext(ctx, stmt, shortURL)
 
 	var url storage.URLRecord
 	if err := row.Scan(&url.UUID, &url.ShortURL, &url.OriginalURL); err != nil {
