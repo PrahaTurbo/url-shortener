@@ -1,17 +1,28 @@
 package service
 
 import (
+	"errors"
+	"github.com/PrahaTurbo/url-shortener/internal/models"
+	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/mock"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	"testing"
 )
 
-func TestService_generateID(t *testing.T) {
-	s := &Service{
-		URLs: &mock.StorageMock{DB: make(map[string]string)},
+func setupService(mockStorage *mock.MockRepository) Service {
+	return Service{
+		Storage: mockStorage,
+		baseURL: "localhost:8080",
 	}
+}
+
+func TestService_generateID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	srv := setupService(s)
 
 	tests := []struct {
 		name      string
@@ -35,16 +46,35 @@ func TestService_generateID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			id := s.generateID(tt.originURL)
+			id := srv.generateID(tt.originURL)
 			assert.Equal(t, tt.want, id)
 		})
 	}
 }
 
 func TestService_SaveURL(t *testing.T) {
-	s := &Service{
-		URLs: &mock.StorageMock{DB: make(map[string]string)},
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	urlRecord := storage.URLRecord{
+		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
+		ShortURL:    "fpCk-c",
+		OriginalURL: "https://ya.ru",
 	}
+
+	s.EXPECT().
+		PutURL(gomock.Any()).
+		Return(nil)
+
+	s.EXPECT().
+		GetURL(urlRecord.ShortURL).
+		Return(&urlRecord, nil)
+
+	s.EXPECT().
+		GetURL("FgAJzm").
+		Return(nil, errors.New("no url"))
+
+	srv := setupService(s)
 
 	tests := []struct {
 		name string
@@ -52,53 +82,71 @@ func TestService_SaveURL(t *testing.T) {
 		want string
 	}{
 		{
-			name: "save url",
+			name: "save url successfully",
 			url:  "https://yandex.ru",
-			want: "https://yandex.ru",
+			want: srv.baseURL + "/" + "FgAJzm",
 		},
 		{
-			name: "don't save same url",
-			url:  "https://yandex.ru",
-			want: "https://yandex.ru",
+			name: "don't save url that already in storage",
+			url:  urlRecord.OriginalURL,
+			want: srv.baseURL + "/" + urlRecord.ShortURL,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			id := s.SaveURL(tt.url)
-			url, err := s.GetURL(id)
+			shortURL, err := srv.SaveURL(tt.url)
 
 			if assert.NoError(t, err) {
-				assert.Equal(t, tt.want, url)
+				assert.Equal(t, tt.want, shortURL)
 			}
 		})
 	}
 }
 
 func TestService_GetURL(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	urlRecord := storage.URLRecord{
+		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
+		ShortURL:    "fpCk-c",
+		OriginalURL: "https://ya.ru",
+	}
+
+	s.EXPECT().
+		GetURL(urlRecord.ShortURL).
+		Return(&urlRecord, nil)
+
+	s.EXPECT().
+		GetURL("abc").
+		Return(nil, errors.New("no url"))
+
+	srv := setupService(s)
+
 	type want struct {
 		url string
 		err bool
 	}
 
 	tests := []struct {
-		name string
-		id   string
-		want want
+		name     string
+		shortURL string
+		want     want
 	}{
 		{
-			name: "get url",
-			id:   "id",
+			name:     "get url",
+			shortURL: urlRecord.ShortURL,
 			want: want{
-				url: "https://yandex.ru",
+				url: urlRecord.OriginalURL,
 				err: false,
 			},
 		},
 		{
-			name: "get url with false id",
-			id:   "id2",
+			name:     "err when getting url with false id",
+			shortURL: "abc",
 			want: want{
-				url: "https://yandex.ru",
+				url: "",
 				err: true,
 			},
 		},
@@ -106,11 +154,8 @@ func TestService_GetURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				URLs: &mock.StorageMock{DB: map[string]string{"id": tt.want.url}},
-			}
 
-			url, err := s.GetURL(tt.id)
+			url, err := srv.GetURL(tt.shortURL)
 			if !tt.want.err {
 				require.NoError(t, err)
 
@@ -120,5 +165,83 @@ func TestService_GetURL(t *testing.T) {
 
 			assert.Error(t, err)
 		})
+	}
+}
+
+func TestService_SaveBatch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	urlRecord := storage.URLRecord{
+		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
+		ShortURL:    "fpCk-c",
+		OriginalURL: "https://ya.ru",
+	}
+
+	s.EXPECT().
+		PutBatchURLs(gomock.Any()).
+		Return(nil)
+
+	s.EXPECT().
+		GetURL(urlRecord.ShortURL).
+		Return(&urlRecord, nil)
+
+	s.EXPECT().
+		GetURL("FgAJzm").
+		Return(nil, errors.New("no url"))
+
+	srv := setupService(s)
+
+	tests := []struct {
+		name  string
+		batch []models.BatchRequest
+		want  []models.BatchResponse
+	}{
+		{
+			name: "save batch successfully",
+			batch: []models.BatchRequest{
+				{
+					CorrelationID: "1",
+					OriginalURL:   "https://ya.ru",
+				},
+				{
+					CorrelationID: "2",
+					OriginalURL:   "https://yandex.ru",
+				},
+			},
+			want: []models.BatchResponse{
+				{
+					CorrelationID: "1",
+					ShortURL:      "https://ya.ru",
+				},
+				{
+					CorrelationID: "2",
+					ShortURL:      "https://yandex.ru",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shortURL, err := srv.SaveURL(tt.url)
+
+			if assert.NoError(t, err) {
+				assert.Equal(t, tt.want, shortURL)
+			}
+		})
+	}
+}
+
+func formBatchRequest() []models.BatchRequest {
+	return []models.BatchRequest{
+		{
+			CorrelationID: "1",
+			OriginalURL:   "https://ya.ru",
+		},
+		{
+			CorrelationID: "2",
+			OriginalURL:   "https://yandex.ru",
+		},
 	}
 }

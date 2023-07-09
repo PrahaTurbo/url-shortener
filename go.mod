@@ -7,6 +7,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v5 v5.4.1
 	github.com/stretchr/testify v1.8.4
+	go.uber.org/mock v0.2.0
 	go.uber.org/zap v1.24.0
 )
 

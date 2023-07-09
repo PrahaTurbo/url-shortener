@@ -6,21 +6,20 @@ import (
 	"fmt"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"os"
 	"sync"
 )
 
 type InMemStorage struct {
-	db              map[string]string
+	db              map[string]storage.URLRecord
 	storageFilePath string
 	mu              sync.Mutex
 }
 
 func NewInMemStorage(filePath string) storage.Repository {
 	s := &InMemStorage{
-		db:              make(map[string]string),
+		db:              make(map[string]storage.URLRecord),
 		storageFilePath: filePath,
 	}
 
@@ -31,27 +30,39 @@ func NewInMemStorage(filePath string) storage.Repository {
 	return s
 }
 
-func (s *InMemStorage) Put(id string, url string) {
+func (s *InMemStorage) PutURL(r storage.URLRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.db[id] = url
+	s.db[r.ShortURL] = r
 
-	if err := s.writeRecordToFile(id, url); err != nil {
-		logger.Log.Error("cannot write url record to file storage", zap.Error(err))
+	if err := s.writeRecordToFile(r); err != nil {
+		return err
 	}
+
+	return nil
 }
 
-func (s *InMemStorage) Get(id string) (string, error) {
+func (s *InMemStorage) PutBatchURLs(urls []storage.URLRecord) error {
+	for _, r := range urls {
+		if err := s.PutURL(r); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *InMemStorage) GetURL(id string) (*storage.URLRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	url, ok := s.db[id]
+	record, ok := s.db[id]
 	if !ok {
-		return "", fmt.Errorf("no url for id: %s", id)
+		return nil, fmt.Errorf("no url for id: %s", id)
 	}
 
-	return url, nil
+	return &record, nil
 }
 
 func (s *InMemStorage) Ping() error {
@@ -68,31 +79,27 @@ func (s *InMemStorage) restoreFromFile() error {
 	}
 	defer f.Close()
 
-	s.db = make(map[string]string)
+	s.db = make(map[string]storage.URLRecord)
 
 	dec := json.NewDecoder(f)
 	for dec.More() {
-		var record storage.URLRecord
-		if err := dec.Decode(&record); err != nil {
+		var r storage.URLRecord
+		if err := dec.Decode(&r); err != nil {
 			return err
 		}
 
-		s.db[record.ShortURL] = record.OriginalURL
+		s.db[r.ShortURL] = r
 	}
 
 	return nil
 }
 
-func (s *InMemStorage) writeRecordToFile(id string, url string) error {
+func (s *InMemStorage) writeRecordToFile(r storage.URLRecord) error {
 	if s.storageFilePath == "" {
 		return nil
 	}
 
-	record := storage.URLRecord{
-		UUID:        uuid.New().String(),
-		ShortURL:    id,
-		OriginalURL: url,
-	}
+	logger.Log.Info("write to file")
 
 	f, err := os.OpenFile(s.storageFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -100,9 +107,13 @@ func (s *InMemStorage) writeRecordToFile(id string, url string) error {
 	}
 	defer f.Close()
 
-	if err := json.NewEncoder(f).Encode(&record); err != nil {
+	logger.Log.Info("file opened")
+
+	if err := json.NewEncoder(f).Encode(&r); err != nil {
 		return err
 	}
+
+	logger.Log.Info("file encoded")
 
 	return nil
 }

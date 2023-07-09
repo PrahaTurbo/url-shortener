@@ -3,36 +3,85 @@ package service
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"github.com/PrahaTurbo/url-shortener/config"
+	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
+	"github.com/google/uuid"
 )
 
 type Service struct {
-	URLs storage.Repository
+	Storage storage.Repository
+	baseURL string
 }
 
-func NewService(storage storage.Repository) Service {
-	return Service{storage}
+func NewService(cfg config.Config, storage storage.Repository) Service {
+	return Service{
+		Storage: storage,
+		baseURL: cfg.BaseURL,
+	}
 }
 
-func (s *Service) SaveURL(url string) string {
-	// TODO Check if url has https or http prefix and add it if it doesn't
+func (s *Service) SaveURL(url string) (string, error) {
 	id := s.generateID(url)
 
-	if _, err := s.GetURL(id); err == nil {
-		return id
+	if s.alreadyInStorage(id) {
+		return s.formURL(id), nil
 	}
 
-	s.URLs.Put(id, url)
+	r := storage.URLRecord{
+		UUID:        uuid.New().String(),
+		ShortURL:    id,
+		OriginalURL: url,
+	}
 
-	return id
+	if err := s.Storage.PutURL(r); err != nil {
+		return "", err
+	}
+
+	return s.formURL(id), nil
+}
+
+func (s *Service) SaveBatch(batch []models.BatchRequest) ([]models.BatchResponse, error) {
+	records := make([]storage.URLRecord, 0, len(batch))
+	response := make([]models.BatchResponse, 0, len(batch))
+
+	for _, req := range batch {
+		id := s.generateID(req.OriginalURL)
+
+		var res models.BatchResponse
+		res.CorrelationID = req.CorrelationID
+		res.ShortURL = s.formURL(id)
+		response = append(response, res)
+
+		if s.alreadyInStorage(id) {
+			continue
+		}
+
+		var r storage.URLRecord
+		r.ShortURL = s.generateID(req.OriginalURL)
+		r.OriginalURL = req.OriginalURL
+		r.UUID = uuid.New().String()
+		records = append(records, r)
+	}
+
+	if err := s.Storage.PutBatchURLs(records); err != nil {
+		return nil, err
+	}
+
+	return response, nil
 }
 
 func (s *Service) GetURL(id string) (string, error) {
-	return s.URLs.Get(id)
+	r, err := s.Storage.GetURL(id)
+	if err != nil {
+		return "", err
+	}
+
+	return r.OriginalURL, nil
 }
 
 func (s *Service) PingDB() error {
-	return s.URLs.Ping()
+	return s.Storage.Ping()
 }
 
 func (s *Service) generateID(url string) string {
@@ -42,4 +91,16 @@ func (s *Service) generateID(url string) string {
 	truncatedHash := hash[:6]
 
 	return truncatedHash
+}
+
+func (s *Service) formURL(id string) string {
+	return s.baseURL + "/" + id
+}
+
+func (s *Service) alreadyInStorage(id string) bool {
+	if _, err := s.GetURL(id); err == nil {
+		return true
+	}
+
+	return false
 }

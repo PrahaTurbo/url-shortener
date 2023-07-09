@@ -1,8 +1,9 @@
 package storage
 
 type Repository interface {
-	Put(id string, url string)
-	Get(id string) (string, error)
+	PutURL(url URLRecord) error
+	PutBatchURLs(urls []URLRecord) error
+	GetURL(id string) (*URLRecord, error)
 	Ping() error
 }
 

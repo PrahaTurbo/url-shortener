@@ -23,11 +23,15 @@ func (a *application) makeURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urlID := a.srv.SaveURL(string(body))
+	shortURL, err := a.srv.SaveURL(string(body))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(a.baseURL + "/" + urlID))
+	w.Write([]byte(shortURL))
 }
 
 func (a *application) jsonHandler(w http.ResponseWriter, r *http.Request) {
@@ -45,9 +49,13 @@ func (a *application) jsonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urlID := a.srv.SaveURL(req.URL)
+	shortURL, err := a.srv.SaveURL(req.URL)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
-	resp := models.Response{Result: a.baseURL + "/" + urlID}
+	resp := models.Response{Result: shortURL}
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
@@ -55,7 +63,7 @@ func (a *application) jsonHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Log.Debug("error encoding response", zap.Error(err))
 		return
 	}
-	logger.Log.Debug("sending HTTP 200 response")
+	logger.Log.Debug("sending HTTP 201 response")
 }
 
 func (a *application) getOriginHandler(w http.ResponseWriter, r *http.Request) {
@@ -76,4 +84,30 @@ func (a *application) pingHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (a *application) batchHandler(w http.ResponseWriter, r *http.Request) {
+	var req []models.BatchRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.Log.Debug("cannot unmarshal response", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp, err := a.srv.SaveBatch(req)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		logger.Log.Debug("error encoding response", zap.Error(err))
+		return
+	}
+
+	logger.Log.Debug("sending HTTP 201 response")
 }

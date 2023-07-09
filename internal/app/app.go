@@ -6,16 +6,14 @@ import (
 )
 
 type application struct {
-	addr    string
-	baseURL string
-	srv     service.Service
+	addr string
+	srv  service.Service
 }
 
 func NewApp(c cfg.Config, srv service.Service) application {
 	return application{
-		addr:    c.Addr,
-		baseURL: c.BaseURL,
-		srv:     srv,
+		addr: c.Addr,
+		srv:  srv,
 	}
 }
 
