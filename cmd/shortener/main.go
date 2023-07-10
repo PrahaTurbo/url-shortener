@@ -21,10 +21,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var storage storage.Repository
+	var store storage.Repository
 
 	if c.DatabaseDSN == "" {
-		storage = memory.NewInMemStorage(c.StorageFilePath)
+		store = memory.NewInMemStorage(c.StorageFilePath)
 	} else {
 		db, err := pg.OpenDB(c.DatabaseDSN)
 		if err != nil {
@@ -32,14 +32,14 @@ func main() {
 		}
 		defer db.Close()
 
-		storage = pg.NewSQLStorage(db)
+		store = pg.NewSQLStorage(db)
 	}
 
-	service := service.NewService(c, storage)
-	app := app.NewApp(c, service)
+	srv := service.NewService(c, store)
+	application := app.NewApp(c, srv)
 
-	logger.Log.Info("Server is running", zap.String("address", app.Addr()))
-	if err := http.ListenAndServe(app.Addr(), app.Router()); err != nil {
+	logger.Log.Info("Server is running", zap.String("address", application.Addr()))
+	if err := http.ListenAndServe(application.Addr(), application.Router()); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
@@ -25,16 +26,16 @@ func (a *application) makeURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var statusCode int
-
 	shortURL, err := a.srv.SaveURL(string(body))
-	switch err {
-	case service.ErrAlready:
-		statusCode = http.StatusConflict
-	case nil:
+	if err != nil {
+		if errors.Is(err, service.ErrAlready) {
+			statusCode = http.StatusConflict
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
 		statusCode = http.StatusCreated
-	default:
-		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
@@ -58,16 +59,16 @@ func (a *application) jsonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var statusCode int
-
 	shortURL, err := a.srv.SaveURL(req.URL)
-	switch err {
-	case service.ErrAlready:
-		statusCode = http.StatusConflict
-	case nil:
+	if err != nil {
+		if errors.Is(err, service.ErrAlready) {
+			statusCode = http.StatusConflict
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
 		statusCode = http.StatusCreated
-	default:
-		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 
 	w.Header().Set("content-type", "application/json")
