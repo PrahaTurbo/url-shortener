@@ -34,8 +34,6 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 }
 
 func Initialize(level string) (*Logger, error) {
-	log := zap.NewNop()
-
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
 		return nil, err
@@ -43,14 +41,12 @@ func Initialize(level string) (*Logger, error) {
 
 	cfg := zap.NewProductionConfig()
 	cfg.Level = lvl
-	zl, err := cfg.Build()
+	logger, err := cfg.Build()
 	if err != nil {
 		return nil, err
 	}
 
-	log = zl
-
-	return &Logger{log}, nil
+	return &Logger{logger}, nil
 }
 
 func (logger *Logger) RequestLogger(next http.Handler) http.Handler {

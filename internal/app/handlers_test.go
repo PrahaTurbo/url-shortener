@@ -13,25 +13,23 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 )
 
-var baseURL = "http://localhost:8080"
+var (
+	baseURL = "http://localhost:8080"
+	addr    = "localhost:8080"
+)
 
 func setupTestApp(mockStorage *mock.MockRepository) application {
-	cfg := config.Config{
-		Addr:    "localhost:8080",
-		BaseURL: baseURL,
-	}
 	srv := service.NewService(baseURL, mockStorage)
 
 	log, _ := logger.Initialize("debug")
 
 	return application{
-		addr:   cfg.Addr,
+		addr:   addr,
 		srv:    srv,
 		logger: log,
 	}
