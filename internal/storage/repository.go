@@ -1,9 +1,11 @@
 package storage
 
+import "context"
+
 type Repository interface {
-	PutURL(url URLRecord) error
-	PutBatchURLs(urls []URLRecord) error
-	GetURL(id string) (*URLRecord, error)
+	PutURL(ctx context.Context, url URLRecord) error
+	PutBatchURLs(ctx context.Context, urls []URLRecord) error
+	GetURL(ctx context.Context, id string) (*URLRecord, error)
 	Ping() error
 }
 

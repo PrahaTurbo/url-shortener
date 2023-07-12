@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/mock"
 	"go.uber.org/mock/gomock"
@@ -25,11 +26,14 @@ func setupTestApp(mockStorage *mock.MockRepository) application {
 		Addr:    "localhost:8080",
 		BaseURL: baseURL,
 	}
-	srv := service.NewService(cfg, mockStorage)
+	srv := service.NewService(baseURL, mockStorage)
+
+	log, _ := logger.Initialize("debug")
 
 	return application{
-		addr: cfg.Addr,
-		srv:  srv,
+		addr:   cfg.Addr,
+		srv:    srv,
+		logger: log,
 	}
 }
 
@@ -44,15 +48,15 @@ func Test_application_makeURL(t *testing.T) {
 	}
 
 	s.EXPECT().
-		GetURL(urlRecord.ShortURL).
+		GetURL(gomock.Any(), urlRecord.ShortURL).
 		Return(&urlRecord, nil)
 
 	s.EXPECT().
-		GetURL("FgAJzm").
+		GetURL(gomock.Any(), "FgAJzm").
 		Return(nil, errors.New("no url"))
 
 	s.EXPECT().
-		PutURL(gomock.Any()).
+		PutURL(gomock.Any(), gomock.Any()).
 		Return(nil)
 
 	app := setupTestApp(s)
@@ -130,11 +134,11 @@ func Test_application_getOrigin(t *testing.T) {
 	}
 
 	s.EXPECT().
-		GetURL(urlRecord.ShortURL).
+		GetURL(gomock.Any(), urlRecord.ShortURL).
 		Return(&urlRecord, nil)
 
 	s.EXPECT().
-		GetURL("Azcxc").
+		GetURL(gomock.Any(), "Azcxc").
 		Return(nil, errors.New("no url"))
 
 	app := setupTestApp(s)
@@ -199,15 +203,15 @@ func Test_application_jsonHandler(t *testing.T) {
 	}
 
 	s.EXPECT().
-		GetURL(urlRecord.ShortURL).
+		GetURL(gomock.Any(), urlRecord.ShortURL).
 		Return(&urlRecord, nil)
 
 	s.EXPECT().
-		GetURL("FgAJzm").
+		GetURL(gomock.Any(), "FgAJzm").
 		Return(nil, errors.New("no url"))
 
 	s.EXPECT().
-		PutURL(gomock.Any()).
+		PutURL(gomock.Any(), gomock.Any()).
 		Return(nil)
 
 	app := setupTestApp(s)
@@ -318,10 +322,10 @@ func Test_application_batchHandler(t *testing.T) {
 	s := mock.NewMockRepository(ctrl)
 
 	s.EXPECT().
-		GetURL(gomock.Any()).
+		GetURL(gomock.Any(), gomock.Any()).
 		Return(nil, errors.New("no url")).AnyTimes()
 
-	s.EXPECT().PutBatchURLs(gomock.Any()).
+	s.EXPECT().PutBatchURLs(gomock.Any(), gomock.Any()).
 		Return(nil).AnyTimes()
 
 	app := setupTestApp(s)

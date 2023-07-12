@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,23 +15,25 @@ import (
 type InMemStorage struct {
 	db              map[string]storage.URLRecord
 	storageFilePath string
+	logger          *logger.Logger
 	mu              sync.Mutex
 }
 
-func NewInMemStorage(filePath string) storage.Repository {
+func NewInMemStorage(filePath string, logger *logger.Logger) storage.Repository {
 	s := &InMemStorage{
 		db:              make(map[string]storage.URLRecord),
 		storageFilePath: filePath,
+		logger:          logger,
 	}
 
 	if err := s.restoreFromFile(); err != nil {
-		logger.Log.Error("cannot restore url records from file", zap.Error(err))
+		logger.Error("cannot restore url records from file", zap.Error(err))
 	}
 
 	return s
 }
 
-func (s *InMemStorage) PutURL(r storage.URLRecord) error {
+func (s *InMemStorage) PutURL(_ context.Context, r storage.URLRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -43,9 +46,9 @@ func (s *InMemStorage) PutURL(r storage.URLRecord) error {
 	return nil
 }
 
-func (s *InMemStorage) PutBatchURLs(urls []storage.URLRecord) error {
+func (s *InMemStorage) PutBatchURLs(ctx context.Context, urls []storage.URLRecord) error {
 	for _, r := range urls {
-		if err := s.PutURL(r); err != nil {
+		if err := s.PutURL(ctx, r); err != nil {
 			return err
 		}
 	}
@@ -53,7 +56,7 @@ func (s *InMemStorage) PutBatchURLs(urls []storage.URLRecord) error {
 	return nil
 }
 
-func (s *InMemStorage) GetURL(id string) (*storage.URLRecord, error) {
+func (s *InMemStorage) GetURL(_ context.Context, id string) (*storage.URLRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -99,7 +102,7 @@ func (s *InMemStorage) writeRecordToFile(r storage.URLRecord) error {
 		return nil
 	}
 
-	logger.Log.Info("write to file")
+	s.logger.Info("write to file")
 
 	f, err := os.OpenFile(s.storageFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -107,13 +110,13 @@ func (s *InMemStorage) writeRecordToFile(r storage.URLRecord) error {
 	}
 	defer f.Close()
 
-	logger.Log.Info("file opened")
+	s.logger.Info("file opened")
 
 	if err := json.NewEncoder(f).Encode(&r); err != nil {
 		return err
 	}
 
-	logger.Log.Info("file encoded")
+	s.logger.Info("file encoded")
 
 	return nil
 }

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
@@ -57,6 +58,7 @@ func TestService_generateID(t *testing.T) {
 func TestService_SaveURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	s := mock.NewMockRepository(ctrl)
+	ctx := context.Background()
 
 	urlRecord := storage.URLRecord{
 		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
@@ -65,15 +67,15 @@ func TestService_SaveURL(t *testing.T) {
 	}
 
 	s.EXPECT().
-		PutURL(gomock.Any()).
+		PutURL(gomock.Any(), gomock.Any()).
 		Return(nil)
 
 	s.EXPECT().
-		GetURL(urlRecord.ShortURL).
+		GetURL(gomock.Any(), urlRecord.ShortURL).
 		Return(&urlRecord, nil)
 
 	s.EXPECT().
-		GetURL("FgAJzm").
+		GetURL(gomock.Any(), "FgAJzm").
 		Return(nil, errors.New("no url"))
 
 	srv := setupService(s)
@@ -100,7 +102,7 @@ func TestService_SaveURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			shortURL, err := srv.SaveURL(tt.url)
+			shortURL, err := srv.SaveURL(ctx, tt.url)
 
 			if tt.wantErr != nil {
 				assert.Equal(t, tt.wantErr, err)
@@ -114,6 +116,7 @@ func TestService_SaveURL(t *testing.T) {
 func TestService_GetURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	s := mock.NewMockRepository(ctrl)
+	ctx := context.Background()
 
 	urlRecord := storage.URLRecord{
 		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
@@ -122,11 +125,11 @@ func TestService_GetURL(t *testing.T) {
 	}
 
 	s.EXPECT().
-		GetURL(urlRecord.ShortURL).
+		GetURL(gomock.Any(), urlRecord.ShortURL).
 		Return(&urlRecord, nil)
 
 	s.EXPECT().
-		GetURL("abc").
+		GetURL(gomock.Any(), "abc").
 		Return(nil, errors.New("no url"))
 
 	srv := setupService(s)
@@ -162,7 +165,7 @@ func TestService_GetURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			url, err := srv.GetURL(tt.shortURL)
+			url, err := srv.GetURL(ctx, tt.shortURL)
 			if !tt.want.err {
 				require.NoError(t, err)
 
@@ -178,9 +181,10 @@ func TestService_GetURL(t *testing.T) {
 func TestService_SaveBatch(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	s := mock.NewMockRepository(ctrl)
+	ctx := context.Background()
 
 	s.EXPECT().
-		GetURL(gomock.Any()).
+		GetURL(gomock.Any(), gomock.Any()).
 		Return(nil, errors.New("no url")).AnyTimes()
 
 	srv := setupService(s)
@@ -236,15 +240,15 @@ func TestService_SaveBatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.wantErr {
 				s.EXPECT().
-					PutBatchURLs(gomock.Any()).
+					PutBatchURLs(ctx, gomock.Any()).
 					Return(errors.New("cannot save batch urls"))
 			} else {
 				s.EXPECT().
-					PutBatchURLs(gomock.Any()).
+					PutBatchURLs(ctx, gomock.Any()).
 					Return(nil)
 			}
 
-			resp, err := srv.SaveBatch(tt.batch)
+			resp, err := srv.SaveBatch(ctx, tt.batch)
 
 			if tt.wantErr {
 				assert.NotEmpty(t, err)

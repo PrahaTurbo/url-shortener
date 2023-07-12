@@ -1,33 +1,33 @@
 package service
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
-	"github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"github.com/google/uuid"
 )
+
+var ErrAlready = errors.New("URL already in storage")
 
 type Service struct {
 	Storage storage.Repository
 	baseURL string
 }
 
-func NewService(cfg config.Config, storage storage.Repository) Service {
+func NewService(baseURL string, storage storage.Repository) Service {
 	return Service{
 		Storage: storage,
-		baseURL: cfg.BaseURL,
+		baseURL: baseURL,
 	}
 }
 
-var ErrAlready = errors.New("URL already in storage")
-
-func (s *Service) SaveURL(url string) (string, error) {
+func (s *Service) SaveURL(ctx context.Context, url string) (string, error) {
 	id := s.generateID(url)
 
-	if s.alreadyInStorage(id) {
+	if s.alreadyInStorage(ctx, id) {
 		return s.formURL(id), ErrAlready
 	}
 
@@ -37,14 +37,14 @@ func (s *Service) SaveURL(url string) (string, error) {
 		OriginalURL: url,
 	}
 
-	if err := s.Storage.PutURL(r); err != nil {
+	if err := s.Storage.PutURL(ctx, r); err != nil {
 		return "", err
 	}
 
 	return s.formURL(id), nil
 }
 
-func (s *Service) SaveBatch(batch []models.BatchRequest) ([]models.BatchResponse, error) {
+func (s *Service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([]models.BatchResponse, error) {
 	records := make([]storage.URLRecord, 0, len(batch))
 	response := make([]models.BatchResponse, 0, len(batch))
 
@@ -60,7 +60,7 @@ func (s *Service) SaveBatch(batch []models.BatchRequest) ([]models.BatchResponse
 		res.ShortURL = s.formURL(id)
 		response = append(response, res)
 
-		if s.alreadyInStorage(id) {
+		if s.alreadyInStorage(ctx, id) {
 			continue
 		}
 
@@ -71,16 +71,16 @@ func (s *Service) SaveBatch(batch []models.BatchRequest) ([]models.BatchResponse
 		records = append(records, r)
 	}
 
-	if err := s.Storage.PutBatchURLs(records); err != nil {
+	if err := s.Storage.PutBatchURLs(ctx, records); err != nil {
 		return nil, err
 	}
 
 	return response, nil
 }
 
-func (s *Service) GetURL(id string) (string, error) {
-	r, err := s.Storage.GetURL(id)
-	if err != nil {
+func (s *Service) GetURL(ctx context.Context, id string) (string, error) {
+	r, err := s.Storage.GetURL(ctx, id)
+	if err != nil || r == nil {
 		return "", err
 	}
 
@@ -104,8 +104,8 @@ func (s *Service) formURL(id string) string {
 	return s.baseURL + "/" + id
 }
 
-func (s *Service) alreadyInStorage(id string) bool {
-	if _, err := s.GetURL(id); err == nil {
+func (s *Service) alreadyInStorage(ctx context.Context, id string) bool {
+	if _, err := s.GetURL(ctx, id); err == nil {
 		return true
 	}
 

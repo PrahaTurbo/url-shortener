@@ -3,9 +3,7 @@ package main
 import (
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
-	"github.com/PrahaTurbo/url-shortener/internal/storage"
-	"github.com/PrahaTurbo/url-shortener/internal/storage/memory"
-	"github.com/PrahaTurbo/url-shortener/internal/storage/pg"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/provider"
 	"go.uber.org/zap"
 	"log"
 	"net/http"
@@ -17,28 +15,20 @@ import (
 
 func main() {
 	c := cfg.Load()
-	if err := logger.Initialize(c.LogLevel); err != nil {
+	lgr, err := logger.Initialize(c.LogLevel)
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	var store storage.Repository
-
-	if c.DatabaseDSN == "" {
-		store = memory.NewInMemStorage(c.StorageFilePath)
-	} else {
-		db, err := pg.OpenDB(c.DatabaseDSN)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer db.Close()
-
-		store = pg.NewSQLStorage(db)
+	store, err := provider.NewStorage(c.DatabaseDSN, c.StorageFilePath, lgr)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	srv := service.NewService(c, store)
-	application := app.NewApp(c, srv)
+	srv := service.NewService(c.BaseURL, store)
+	application := app.NewApp(c.Addr, srv, lgr)
 
-	logger.Log.Info("Server is running", zap.String("address", application.Addr()))
+	lgr.Info("Server is running", zap.String("address", application.Addr()))
 	if err := http.ListenAndServe(application.Addr(), application.Router()); err != nil {
 		log.Fatal(err)
 	}

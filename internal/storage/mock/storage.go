@@ -5,6 +5,7 @@
 package mock
 
 import (
+	context "context"
 	reflect "reflect"
 
 	storage "github.com/PrahaTurbo/url-shortener/internal/storage"
@@ -35,18 +36,18 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // GetURL mocks base method.
-func (m *MockRepository) GetURL(id string) (*storage.URLRecord, error) {
+func (m *MockRepository) GetURL(ctx context.Context, id string) (*storage.URLRecord, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetURL", id)
+	ret := m.ctrl.Call(m, "GetURL", ctx, id)
 	ret0, _ := ret[0].(*storage.URLRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetURL indicates an expected call of GetURL.
-func (mr *MockRepositoryMockRecorder) GetURL(id interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) GetURL(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetURL", reflect.TypeOf((*MockRepository)(nil).GetURL), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetURL", reflect.TypeOf((*MockRepository)(nil).GetURL), ctx, id)
 }
 
 // Ping mocks base method.
@@ -64,29 +65,29 @@ func (mr *MockRepositoryMockRecorder) Ping() *gomock.Call {
 }
 
 // PutBatchURLs mocks base method.
-func (m *MockRepository) PutBatchURLs(urls []storage.URLRecord) error {
+func (m *MockRepository) PutBatchURLs(ctx context.Context, urls []storage.URLRecord) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PutBatchURLs", urls)
+	ret := m.ctrl.Call(m, "PutBatchURLs", ctx, urls)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // PutBatchURLs indicates an expected call of PutBatchURLs.
-func (mr *MockRepositoryMockRecorder) PutBatchURLs(urls interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) PutBatchURLs(ctx, urls interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutBatchURLs", reflect.TypeOf((*MockRepository)(nil).PutBatchURLs), urls)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutBatchURLs", reflect.TypeOf((*MockRepository)(nil).PutBatchURLs), ctx, urls)
 }
 
 // PutURL mocks base method.
-func (m *MockRepository) PutURL(url storage.URLRecord) error {
+func (m *MockRepository) PutURL(ctx context.Context, url storage.URLRecord) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PutURL", url)
+	ret := m.ctrl.Call(m, "PutURL", ctx, url)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // PutURL indicates an expected call of PutURL.
-func (mr *MockRepositoryMockRecorder) PutURL(url interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) PutURL(ctx, url interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutURL", reflect.TypeOf((*MockRepository)(nil).PutURL), url)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutURL", reflect.TypeOf((*MockRepository)(nil).PutURL), ctx, url)
 }

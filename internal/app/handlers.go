@@ -2,8 +2,6 @@ package app
 
 import (
 	"encoding/json"
-	"errors"
-	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
 	"go.uber.org/zap"
@@ -26,16 +24,15 @@ func (a *application) makeURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var statusCode int
-	shortURL, err := a.srv.SaveURL(string(body))
-	if err != nil {
-		if errors.Is(err, service.ErrAlready) {
-			statusCode = http.StatusConflict
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	} else {
+	shortURL, err := a.srv.SaveURL(r.Context(), string(body))
+	switch err {
+	case service.ErrAlready:
+		statusCode = http.StatusConflict
+	case nil:
 		statusCode = http.StatusCreated
+	default:
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
@@ -47,28 +44,27 @@ func (a *application) jsonHandler(w http.ResponseWriter, r *http.Request) {
 	var req models.Request
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		logger.Log.Debug("cannot unmarshal response", zap.Error(err))
+		a.logger.Debug("cannot unmarshal response", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	if req.URL == "" {
-		logger.Log.Debug("request without url")
+		a.logger.Debug("request without url")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	var statusCode int
-	shortURL, err := a.srv.SaveURL(req.URL)
-	if err != nil {
-		if errors.Is(err, service.ErrAlready) {
-			statusCode = http.StatusConflict
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	} else {
+	shortURL, err := a.srv.SaveURL(r.Context(), req.URL)
+	switch err {
+	case service.ErrAlready:
+		statusCode = http.StatusConflict
+	case nil:
 		statusCode = http.StatusCreated
+	default:
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("content-type", "application/json")
@@ -77,14 +73,14 @@ func (a *application) jsonHandler(w http.ResponseWriter, r *http.Request) {
 	resp := models.Response{Result: shortURL}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		logger.Log.Debug("error encoding response", zap.Error(err))
+		a.logger.Debug("error encoding response", zap.Error(err))
 		return
 	}
-	logger.Log.Debug("sending HTTP 201 response")
+	a.logger.Debug("sending HTTP 201 response")
 }
 
 func (a *application) getOriginHandler(w http.ResponseWriter, r *http.Request) {
-	url, err := a.srv.GetURL(chi.URLParam(r, "id"))
+	url, err := a.srv.GetURL(r.Context(), chi.URLParam(r, "id"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -107,12 +103,12 @@ func (a *application) batchHandler(w http.ResponseWriter, r *http.Request) {
 	var req []models.BatchRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		logger.Log.Debug("cannot unmarshal response", zap.Error(err))
+		a.logger.Debug("cannot unmarshal response", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	resp, err := a.srv.SaveBatch(req)
+	resp, err := a.srv.SaveBatch(r.Context(), req)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -122,9 +118,9 @@ func (a *application) batchHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		logger.Log.Debug("error encoding response", zap.Error(err))
+		a.logger.Debug("error encoding response", zap.Error(err))
 		return
 	}
 
-	logger.Log.Debug("sending HTTP 201 response")
+	a.logger.Debug("sending HTTP 201 response")
 }

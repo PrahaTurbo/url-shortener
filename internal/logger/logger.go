@@ -16,6 +16,10 @@ type (
 		http.ResponseWriter
 		responseData *responseData
 	}
+
+	Logger struct {
+		*zap.Logger
+	}
 )
 
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
@@ -29,27 +33,27 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode
 }
 
-var Log = zap.NewNop()
+func Initialize(level string) (*Logger, error) {
+	log := zap.NewNop()
 
-func Initialize(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	cfg := zap.NewProductionConfig()
 	cfg.Level = lvl
 	zl, err := cfg.Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	Log = zl
+	log = zl
 
-	return nil
+	return &Logger{log}, nil
 }
 
-func RequestLogger(next http.Handler) http.Handler {
+func (logger *Logger) RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -64,7 +68,7 @@ func RequestLogger(next http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		Log.Info("HTTP request handled",
+		logger.Info("HTTP request handled",
 			zap.String("uri", r.RequestURI),
 			zap.String("method", r.Method),
 			zap.Duration("duration", duration),
