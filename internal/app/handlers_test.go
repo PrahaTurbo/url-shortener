@@ -2,53 +2,62 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/storage"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/mock"
+	"go.uber.org/mock/gomock"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 )
 
-type storageMock struct {
-	db map[string][]byte
-}
+var (
+	baseURL = "http://localhost:8080"
+	addr    = "localhost:8080"
+)
 
-func (s *storageMock) Put(id string, url []byte) {
-	s.db[id] = url
-}
+func setupTestApp(mockStorage *mock.MockRepository) application {
+	srv := service.NewService(baseURL, mockStorage)
 
-func (s *storageMock) Get(id string) ([]byte, error) {
-	url, ok := s.db[id]
-	if !ok {
-		return nil, fmt.Errorf("no url for id: %s", id)
+	log, _ := logger.Initialize("debug")
+
+	return application{
+		addr:   addr,
+		srv:    srv,
+		logger: log,
 	}
-
-	return url, nil
-}
-
-func setupTestApp() application {
-	cfg := config.Config{
-		Addr:    "localhost:8080",
-		BaseURL: "http://localhost:8080",
-	}
-	app := application{
-		addr:    cfg.Addr,
-		baseURL: cfg.BaseURL,
-		srv: service.Service{
-			URLs: &storageMock{db: make(map[string][]byte)},
-		},
-	}
-
-	return app
 }
 
 func Test_application_makeURL(t *testing.T) {
-	app := setupTestApp()
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	urlRecord := storage.URLRecord{
+		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
+		ShortURL:    "fpCk-c",
+		OriginalURL: "https://ya.ru",
+	}
+
+	s.EXPECT().
+		GetURL(gomock.Any(), urlRecord.ShortURL).
+		Return(&urlRecord, nil)
+
+	s.EXPECT().
+		GetURL(gomock.Any(), "FgAJzm").
+		Return(nil, errors.New("no url"))
+
+	s.EXPECT().
+		PutURL(gomock.Any(), gomock.Any()).
+		Return(nil)
+
+	app := setupTestApp(s)
 
 	type want struct {
 		contentType string
@@ -63,19 +72,29 @@ func Test_application_makeURL(t *testing.T) {
 		want        want
 	}{
 		{
-			name:        "simple url",
+			name:        "save url that already in storage",
+			request:     "/",
+			requestBody: urlRecord.OriginalURL,
+			want: want{
+				contentType: "text/plain",
+				statusCode:  http.StatusConflict,
+				response:    baseURL + "/" + urlRecord.ShortURL,
+			},
+		},
+		{
+			name:        "save new url",
 			request:     "/",
 			requestBody: "https://yandex.ru",
 			want: want{
 				contentType: "text/plain",
 				statusCode:  http.StatusCreated,
-				response:    app.baseURL + "/FgAJzm",
+				response:    baseURL + "/FgAJzm",
 			},
 		},
 		{
 			name:        "unsupported request path",
 			request:     "/make-url",
-			requestBody: "https://yandex.ru",
+			requestBody: urlRecord.OriginalURL,
 			want: want{
 				contentType: "text/plain",
 				statusCode:  http.StatusBadRequest,
@@ -103,7 +122,24 @@ func Test_application_makeURL(t *testing.T) {
 }
 
 func Test_application_getOrigin(t *testing.T) {
-	app := setupTestApp()
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	urlRecord := storage.URLRecord{
+		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
+		ShortURL:    "fpCk-c",
+		OriginalURL: "https://ya.ru",
+	}
+
+	s.EXPECT().
+		GetURL(gomock.Any(), urlRecord.ShortURL).
+		Return(&urlRecord, nil)
+
+	s.EXPECT().
+		GetURL(gomock.Any(), "Azcxc").
+		Return(nil, errors.New("no url"))
+
+	app := setupTestApp(s)
 
 	type want struct {
 		location   string
@@ -113,24 +149,21 @@ func Test_application_getOrigin(t *testing.T) {
 	tests := []struct {
 		name    string
 		request string
-		urlID   string
 		want    want
 	}{
 		{
 			name:    "success",
-			request: "/yAvfdS",
-			urlID:   "yAvfdS",
+			request: "/" + urlRecord.ShortURL,
 			want: want{
-				location:   "https://yandex.ru",
+				location:   urlRecord.OriginalURL,
 				statusCode: http.StatusTemporaryRedirect,
 			},
 		},
 		{
 			name:    "wrong url id",
-			request: "/yAvFbv",
-			urlID:   "Azcxc",
+			request: "/Azcxc",
 			want: want{
-				location:   "https://yandex.ru",
+				location:   "",
 				statusCode: http.StatusBadRequest,
 			},
 		},
@@ -144,7 +177,6 @@ func Test_application_getOrigin(t *testing.T) {
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiCtx))
 			chiCtx.URLParams.Add("id", tt.request[1:])
 
-			app.srv.URLs.Put(tt.urlID, []byte(tt.want.location))
 			app.getOriginHandler(w, r)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
@@ -159,9 +191,28 @@ func Test_application_getOrigin(t *testing.T) {
 }
 
 func Test_application_jsonHandler(t *testing.T) {
-	app := setupTestApp()
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
 
-	successBody := fmt.Sprintf(`{"result": "http://%s/FgAJzm"}`, app.addr)
+	urlRecord := storage.URLRecord{
+		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
+		ShortURL:    "fpCk-c",
+		OriginalURL: "https://ya.ru",
+	}
+
+	s.EXPECT().
+		GetURL(gomock.Any(), urlRecord.ShortURL).
+		Return(&urlRecord, nil)
+
+	s.EXPECT().
+		GetURL(gomock.Any(), "FgAJzm").
+		Return(nil, errors.New("no url"))
+
+	s.EXPECT().
+		PutURL(gomock.Any(), gomock.Any()).
+		Return(nil)
+
+	app := setupTestApp(s)
 
 	type want struct {
 		statusCode int
@@ -175,12 +226,21 @@ func Test_application_jsonHandler(t *testing.T) {
 		want        want
 	}{
 		{
-			name:        "post success",
+			name:        "save url that already in storage",
+			request:     "/api/shorten",
+			requestBody: fmt.Sprintf(`{"url": "%s"}`, urlRecord.OriginalURL),
+			want: want{
+				statusCode: http.StatusConflict,
+				response:   fmt.Sprintf(`{"result": "%s/%s"}`, baseURL, urlRecord.ShortURL),
+			},
+		},
+		{
+			name:        "save new url",
 			request:     "/api/shorten",
 			requestBody: `{"url": "https://yandex.ru"}`,
 			want: want{
 				statusCode: http.StatusCreated,
-				response:   successBody,
+				response:   fmt.Sprintf(`{"result": "%s/FgAJzm"}`, baseURL),
 			},
 		},
 		{
@@ -200,6 +260,113 @@ func Test_application_jsonHandler(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 			w := httptest.NewRecorder()
 			app.jsonHandler(w, request)
+
+			assert.Equal(t, tt.want.statusCode, w.Code)
+
+			if tt.want.response != "" {
+				assert.JSONEq(t, tt.want.response, w.Body.String())
+			}
+		})
+	}
+}
+
+func Test_application_pingHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	tests := []struct {
+		name       string
+		statusCode int
+		fail       bool
+	}{
+		{
+			name:       "ping success",
+			statusCode: 200,
+			fail:       false,
+		},
+		{
+			name:       "ping failed",
+			statusCode: 500,
+			fail:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/ping", nil)
+			w := httptest.NewRecorder()
+
+			if tt.fail {
+				s.EXPECT().
+					Ping().
+					Return(errors.New("no sql database"))
+			} else {
+				s.EXPECT().
+					Ping().
+					Return(nil)
+			}
+
+			app := setupTestApp(s)
+
+			app.pingHandler(w, r)
+
+			assert.Equal(t, tt.statusCode, w.Code)
+		})
+	}
+}
+
+func Test_application_batchHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	s := mock.NewMockRepository(ctrl)
+
+	s.EXPECT().
+		GetURL(gomock.Any(), gomock.Any()).
+		Return(nil, errors.New("no url")).AnyTimes()
+
+	s.EXPECT().PutBatchURLs(gomock.Any(), gomock.Any()).
+		Return(nil).AnyTimes()
+
+	app := setupTestApp(s)
+
+	successBody := fmt.Sprintf(`[{"correlation_id": "1", "short_url": "%s/fpCk-c"}]`, baseURL)
+
+	type want struct {
+		statusCode int
+		response   string
+	}
+
+	tests := []struct {
+		name        string
+		request     string
+		requestBody string
+		want        want
+	}{
+		{
+			name:        "post success",
+			request:     "/api/shorten/batch",
+			requestBody: `[{"correlation_id": "1", "original_url": "https://ya.ru"}]`,
+			want: want{
+				statusCode: http.StatusCreated,
+				response:   successBody,
+			},
+		},
+		{
+			name:        "post unmarshal error",
+			request:     "/api/shorten/batch",
+			requestBody: `[{"correlation_id": "1", "url": "https://ya.ru"}]`,
+			want: want{
+				statusCode: http.StatusInternalServerError,
+				response:   "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := strings.NewReader(tt.requestBody)
+			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
+			w := httptest.NewRecorder()
+			app.batchHandler(w, request)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 

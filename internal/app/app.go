@@ -1,21 +1,27 @@
 package app
 
 import (
-	cfg "github.com/PrahaTurbo/url-shortener/config"
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
+	"github.com/go-chi/chi/v5"
 )
 
-type application struct {
-	addr    string
-	baseURL string
-	srv     service.Service
+type App interface {
+	Addr() string
+	Router() chi.Router
 }
 
-func NewApp(c cfg.Config, srv service.Service) application {
-	return application{
-		addr:    c.Addr,
-		baseURL: c.BaseURL,
-		srv:     srv,
+type application struct {
+	addr   string
+	srv    service.Service
+	logger *logger.Logger
+}
+
+func NewApp(addr string, srv service.Service, logger *logger.Logger) App {
+	return &application{
+		addr:   addr,
+		srv:    srv,
+		logger: logger,
 	}
 }
 
