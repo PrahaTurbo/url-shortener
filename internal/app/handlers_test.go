@@ -42,10 +42,8 @@ func Test_application_makeURL(t *testing.T) {
 	s := mock.NewMockRepository(ctrl)
 
 	urlRecord := storage.URLRecord{
-		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
 		ShortURL:    "fpCk-c",
 		OriginalURL: "https://ya.ru",
-		UserID:      "1",
 	}
 
 	s.EXPECT().
@@ -110,7 +108,7 @@ func Test_application_makeURL(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
-			ctx := context.WithValue(request.Context(), config.ContextUserIDKeyConst, "mocked-user-id")
+			ctx := context.WithValue(request.Context(), string(config.UserIDKey), "mocked-user-id")
 			request = request.WithContext(ctx)
 
 			w := httptest.NewRecorder()
@@ -133,10 +131,8 @@ func Test_application_getOrigin(t *testing.T) {
 	s := mock.NewMockRepository(ctrl)
 
 	urlRecord := storage.URLRecord{
-		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
 		ShortURL:    "fpCk-c",
 		OriginalURL: "https://ya.ru",
-		UserID:      "1",
 	}
 
 	s.EXPECT().
@@ -185,7 +181,7 @@ func Test_application_getOrigin(t *testing.T) {
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiCtx))
 			chiCtx.URLParams.Add("id", tt.request[1:])
 
-			ctx := context.WithValue(r.Context(), config.ContextUserIDKeyConst, "mocked-user-id")
+			ctx := context.WithValue(r.Context(), string(config.UserIDKey), "mocked-user-id")
 			r = r.WithContext(ctx)
 
 			app.getOriginHandler(w, r)
@@ -206,10 +202,8 @@ func Test_application_jsonHandler(t *testing.T) {
 	s := mock.NewMockRepository(ctrl)
 
 	urlRecord := storage.URLRecord{
-		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
 		ShortURL:    "fpCk-c",
 		OriginalURL: "https://ya.ru",
-		UserID:      "1",
 	}
 
 	s.EXPECT().
@@ -271,7 +265,7 @@ func Test_application_jsonHandler(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
-			ctx := context.WithValue(request.Context(), config.ContextUserIDKeyConst, "mocked-user-id")
+			ctx := context.WithValue(request.Context(), string(config.UserIDKey), "mocked-user-id")
 			request = request.WithContext(ctx)
 
 			w := httptest.NewRecorder()
@@ -382,7 +376,7 @@ func Test_application_batchHandler(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
-			ctx := context.WithValue(request.Context(), config.ContextUserIDKeyConst, "mocked-user-id")
+			ctx := context.WithValue(request.Context(), string(config.UserIDKey), "mocked-user-id")
 			request = request.WithContext(ctx)
 
 			w := httptest.NewRecorder()

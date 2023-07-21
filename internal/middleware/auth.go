@@ -19,7 +19,7 @@ func Auth(jwtSecret string) func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var cookie *http.Cookie
 
-			cookie, err := r.Cookie(config.JWTTokenCookieNameConst)
+			cookie, err := r.Cookie(string(config.JWTTokenCookieName))
 			if err != nil {
 				newCookie, err := createJWTAuthCookie(jwtSecret)
 				if err != nil {
@@ -62,7 +62,7 @@ func Auth(jwtSecret string) func(next http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), config.ContextUserIDKeyConst, claims.UserID)
+			ctx := context.WithValue(r.Context(), string(config.UserIDKey), claims.UserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -79,7 +79,7 @@ func createJWTAuthCookie(jwtSecret string) (*http.Cookie, error) {
 	}
 
 	cookie := &http.Cookie{
-		Name:     config.JWTTokenCookieNameConst,
+		Name:     string(config.JWTTokenCookieName),
 		Value:    tokenString,
 		HttpOnly: true,
 	}

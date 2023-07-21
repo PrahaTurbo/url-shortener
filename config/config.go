@@ -5,9 +5,12 @@ import (
 	"os"
 )
 
+type CookieNameType string
+type UserIDKeyType string
+
 const (
-	JWTTokenCookieNameConst = "token"
-	ContextUserIDKeyConst   = "userID"
+	JWTTokenCookieName CookieNameType = "jwtToken"
+	UserIDKey          UserIDKeyType  = "userID"
 )
 
 type Config struct {

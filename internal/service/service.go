@@ -104,7 +104,7 @@ func (s *Service) GetURLsByUserID(ctx context.Context) ([]models.UserURLsRespons
 
 	for _, record := range records {
 		r := models.UserURLsResponse{
-			ShortURL:    record.ShortURL,
+			ShortURL:    s.formURL(record.ShortURL),
 			OriginalURL: record.OriginalURL,
 		}
 
@@ -156,7 +156,7 @@ func (s *Service) createURLRecord(ctx context.Context, shortURL, originalURL str
 }
 
 func (s *Service) extractUserIDFromCtx(ctx context.Context) (string, error) {
-	userIDVal := ctx.Value(config.ContextUserIDKeyConst)
+	userIDVal := ctx.Value(string(config.UserIDKey))
 	userID, ok := userIDVal.(string)
 	if !ok {
 		return "", fmt.Errorf("cannot extract userID from context")

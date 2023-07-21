@@ -59,10 +59,9 @@ func TestService_generateID(t *testing.T) {
 func TestService_SaveURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	s := mock.NewMockRepository(ctrl)
-	ctx := context.WithValue(context.Background(), config.ContextUserIDKeyConst, "mocked-user-id")
+	ctx := context.WithValue(context.Background(), string(config.UserIDKey), "mocked-user-id")
 
 	urlRecord := storage.URLRecord{
-		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
 		ShortURL:    "fpCk-c",
 		OriginalURL: "https://ya.ru",
 	}
@@ -117,10 +116,9 @@ func TestService_SaveURL(t *testing.T) {
 func TestService_GetURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	s := mock.NewMockRepository(ctrl)
-	ctx := context.WithValue(context.Background(), config.ContextUserIDKeyConst, "mocked-user-id")
+	ctx := context.WithValue(context.Background(), string(config.UserIDKey), "mocked-user-id")
 
 	urlRecord := storage.URLRecord{
-		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
 		ShortURL:    "fpCk-c",
 		OriginalURL: "https://ya.ru",
 	}
@@ -182,7 +180,7 @@ func TestService_GetURL(t *testing.T) {
 func TestService_SaveBatch(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	s := mock.NewMockRepository(ctrl)
-	ctx := context.WithValue(context.Background(), config.ContextUserIDKeyConst, "mocked-user-id")
+	ctx := context.WithValue(context.Background(), string(config.UserIDKey), "mocked-user-id")
 
 	s.EXPECT().
 		GetURL(gomock.Any(), gomock.Any()).
