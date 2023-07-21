@@ -124,3 +124,20 @@ func (a *application) batchHandler(w http.ResponseWriter, r *http.Request) {
 
 	a.logger.Debug("sending HTTP 201 response")
 }
+
+func (a *application) getUserURLsHandler(w http.ResponseWriter, r *http.Request) {
+	resp, err := a.srv.GetURLsByUserID(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	w.Header().Set("content-type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		a.logger.Debug("error encoding response", zap.Error(err))
+		return
+	}
+
+	a.logger.Debug("sending HTTP 200 response")
+}

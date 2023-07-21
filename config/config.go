@@ -5,12 +5,18 @@ import (
 	"os"
 )
 
+const (
+	JWTTokenCookieNameConst = "token"
+	ContextUserIDKeyConst   = "userID"
+)
+
 type Config struct {
 	Addr            string
 	BaseURL         string
 	LogLevel        string
 	StorageFilePath string
 	DatabaseDSN     string
+	JWTSecret       string
 }
 
 func Load() Config {
@@ -49,5 +55,11 @@ func (c *Config) loadEnvVars() {
 
 	if envDatabaseDSN := os.Getenv("DATABASE_DSN"); envDatabaseDSN != "" {
 		c.DatabaseDSN = envDatabaseDSN
+	}
+
+	if envJWTSecret := os.Getenv("JWT_SECRET_KEY"); envJWTSecret != "" {
+		c.JWTSecret = envJWTSecret
+	} else {
+		c.JWTSecret = "key_for_studying"
 	}
 }

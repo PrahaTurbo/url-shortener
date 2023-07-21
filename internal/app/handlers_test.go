@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/mock"
@@ -29,9 +30,10 @@ func setupTestApp(mockStorage *mock.MockRepository) application {
 	log, _ := logger.Initialize("debug")
 
 	return application{
-		addr:   addr,
-		srv:    srv,
-		logger: log,
+		addr:      addr,
+		srv:       srv,
+		logger:    log,
+		jwtSecret: "secret_key",
 	}
 }
 
@@ -43,14 +45,15 @@ func Test_application_makeURL(t *testing.T) {
 		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
 		ShortURL:    "fpCk-c",
 		OriginalURL: "https://ya.ru",
+		UserID:      "1",
 	}
 
 	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL).
+		GetURL(gomock.Any(), urlRecord.ShortURL, gomock.Any()).
 		Return(&urlRecord, nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), "FgAJzm").
+		GetURL(gomock.Any(), "FgAJzm", gomock.Any()).
 		Return(nil, errors.New("no url"))
 
 	s.EXPECT().
@@ -106,6 +109,10 @@ func Test_application_makeURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
+
+			ctx := context.WithValue(request.Context(), config.ContextUserIDKeyConst, "mocked-user-id")
+			request = request.WithContext(ctx)
+
 			w := httptest.NewRecorder()
 			app.makeURLHandler(w, request)
 
@@ -129,14 +136,15 @@ func Test_application_getOrigin(t *testing.T) {
 		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
 		ShortURL:    "fpCk-c",
 		OriginalURL: "https://ya.ru",
+		UserID:      "1",
 	}
 
 	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL).
+		GetURL(gomock.Any(), urlRecord.ShortURL, gomock.Any()).
 		Return(&urlRecord, nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), "Azcxc").
+		GetURL(gomock.Any(), "Azcxc", gomock.Any()).
 		Return(nil, errors.New("no url"))
 
 	app := setupTestApp(s)
@@ -177,6 +185,9 @@ func Test_application_getOrigin(t *testing.T) {
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiCtx))
 			chiCtx.URLParams.Add("id", tt.request[1:])
 
+			ctx := context.WithValue(r.Context(), config.ContextUserIDKeyConst, "mocked-user-id")
+			r = r.WithContext(ctx)
+
 			app.getOriginHandler(w, r)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
@@ -198,14 +209,15 @@ func Test_application_jsonHandler(t *testing.T) {
 		UUID:        "86d0f933-287c-4e1a-9978-4d9706e3e94f",
 		ShortURL:    "fpCk-c",
 		OriginalURL: "https://ya.ru",
+		UserID:      "1",
 	}
 
 	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL).
+		GetURL(gomock.Any(), urlRecord.ShortURL, gomock.Any()).
 		Return(&urlRecord, nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), "FgAJzm").
+		GetURL(gomock.Any(), "FgAJzm", gomock.Any()).
 		Return(nil, errors.New("no url"))
 
 	s.EXPECT().
@@ -258,6 +270,10 @@ func Test_application_jsonHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
+
+			ctx := context.WithValue(request.Context(), config.ContextUserIDKeyConst, "mocked-user-id")
+			request = request.WithContext(ctx)
+
 			w := httptest.NewRecorder()
 			app.jsonHandler(w, request)
 
@@ -320,7 +336,7 @@ func Test_application_batchHandler(t *testing.T) {
 	s := mock.NewMockRepository(ctrl)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), gomock.Any()).
+		GetURL(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil, errors.New("no url")).AnyTimes()
 
 	s.EXPECT().PutBatchURLs(gomock.Any(), gomock.Any()).
@@ -365,6 +381,10 @@ func Test_application_batchHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
+
+			ctx := context.WithValue(request.Context(), config.ContextUserIDKeyConst, "mocked-user-id")
+			request = request.WithContext(ctx)
+
 			w := httptest.NewRecorder()
 			app.batchHandler(w, request)
 

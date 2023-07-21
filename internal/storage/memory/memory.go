@@ -13,15 +13,20 @@ import (
 )
 
 type InMemStorage struct {
-	db              map[string]storage.URLRecord
+	db              map[Key]*storage.URLRecord
 	storageFilePath string
 	logger          *logger.Logger
 	mu              sync.Mutex
 }
 
+type Key struct {
+	UserID   string
+	ShortURL string
+}
+
 func NewInMemStorage(filePath string, logger *logger.Logger) storage.Repository {
 	s := &InMemStorage{
-		db:              make(map[string]storage.URLRecord),
+		db:              make(map[Key]*storage.URLRecord),
 		storageFilePath: filePath,
 		logger:          logger,
 	}
@@ -33,11 +38,16 @@ func NewInMemStorage(filePath string, logger *logger.Logger) storage.Repository 
 	return s
 }
 
-func (s *InMemStorage) PutURL(_ context.Context, r storage.URLRecord) error {
+func (s *InMemStorage) PutURL(_ context.Context, r *storage.URLRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.db[r.ShortURL] = r
+	k := Key{
+		UserID:   r.UserID,
+		ShortURL: r.ShortURL,
+	}
+
+	s.db[k] = r
 
 	if err := s.writeRecordToFile(r); err != nil {
 		return err
@@ -46,7 +56,7 @@ func (s *InMemStorage) PutURL(_ context.Context, r storage.URLRecord) error {
 	return nil
 }
 
-func (s *InMemStorage) PutBatchURLs(ctx context.Context, urls []storage.URLRecord) error {
+func (s *InMemStorage) PutBatchURLs(ctx context.Context, urls []*storage.URLRecord) error {
 	for _, r := range urls {
 		if err := s.PutURL(ctx, r); err != nil {
 			return err
@@ -56,16 +66,39 @@ func (s *InMemStorage) PutBatchURLs(ctx context.Context, urls []storage.URLRecor
 	return nil
 }
 
-func (s *InMemStorage) GetURL(_ context.Context, id string) (*storage.URLRecord, error) {
+func (s *InMemStorage) GetURL(_ context.Context, shortURL, userID string) (*storage.URLRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	record, ok := s.db[id]
-	if !ok {
-		return nil, fmt.Errorf("no url for id: %s", id)
+	k := Key{
+		UserID:   userID,
+		ShortURL: shortURL,
 	}
 
-	return &record, nil
+	record, ok := s.db[k]
+	if !ok {
+		return nil, fmt.Errorf("no url for id: %s", shortURL)
+	}
+
+	return record, nil
+}
+
+func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]*storage.URLRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var records []*storage.URLRecord
+	for k, v := range s.db {
+		if k.UserID == userID {
+			records = append(records, v)
+		}
+	}
+
+	if len(records) == 0 {
+		return nil, fmt.Errorf("no short urls for id %s", userID)
+	}
+
+	return records, nil
 }
 
 func (s *InMemStorage) Ping() error {
@@ -82,8 +115,6 @@ func (s *InMemStorage) restoreFromFile() error {
 	}
 	defer f.Close()
 
-	s.db = make(map[string]storage.URLRecord)
-
 	dec := json.NewDecoder(f)
 	for dec.More() {
 		var r storage.URLRecord
@@ -91,18 +122,21 @@ func (s *InMemStorage) restoreFromFile() error {
 			return err
 		}
 
-		s.db[r.ShortURL] = r
+		k := Key{
+			UserID:   r.UserID,
+			ShortURL: r.ShortURL,
+		}
+
+		s.db[k] = &r
 	}
 
 	return nil
 }
 
-func (s *InMemStorage) writeRecordToFile(r storage.URLRecord) error {
+func (s *InMemStorage) writeRecordToFile(r *storage.URLRecord) error {
 	if s.storageFilePath == "" {
 		return nil
 	}
-
-	s.logger.Info("write to file")
 
 	f, err := os.OpenFile(s.storageFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -110,13 +144,9 @@ func (s *InMemStorage) writeRecordToFile(r storage.URLRecord) error {
 	}
 	defer f.Close()
 
-	s.logger.Info("file opened")
-
-	if err := json.NewEncoder(f).Encode(&r); err != nil {
+	if err := json.NewEncoder(f).Encode(r); err != nil {
 		return err
 	}
-
-	s.logger.Info("file encoded")
 
 	return nil
 }

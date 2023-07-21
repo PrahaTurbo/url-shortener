@@ -3,6 +3,7 @@ package pg
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"time"
@@ -22,15 +23,15 @@ func NewSQLStorage(db *sql.DB, logger *logger.Logger) storage.Repository {
 	return s
 }
 
-func (s *SQLStorage) PutURL(ctx context.Context, url storage.URLRecord) error {
+func (s *SQLStorage) PutURL(ctx context.Context, url *storage.URLRecord) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 
 	query := `
-		INSERT INTO short_urls (id, short_url, original_url)
-		VALUES ($1, $2, $3)`
+		INSERT INTO short_urls (id, user_id, short_url, original_url)
+		VALUES ($1, $2, $3, $4)`
 
-	_, err := s.db.ExecContext(timeoutCtx, query, url.UUID, url.ShortURL, url.OriginalURL)
+	_, err := s.db.ExecContext(timeoutCtx, query, url.UUID, url.UserID, url.ShortURL, url.OriginalURL)
 	if err != nil {
 		return err
 	}
@@ -38,7 +39,7 @@ func (s *SQLStorage) PutURL(ctx context.Context, url storage.URLRecord) error {
 	return nil
 }
 
-func (s *SQLStorage) PutBatchURLs(ctx context.Context, urls []storage.URLRecord) error {
+func (s *SQLStorage) PutBatchURLs(ctx context.Context, urls []*storage.URLRecord) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 
@@ -49,8 +50,8 @@ func (s *SQLStorage) PutBatchURLs(ctx context.Context, urls []storage.URLRecord)
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO short_urls (id, short_url, original_url)
-		VALUES ($1, $2, $3)`
+		INSERT INTO short_urls (id, user_id, short_url, original_url)
+		VALUES ($1, $2, $3, $4)`
 
 	stmt, err := tx.PrepareContext(timeoutCtx, query)
 	if err != nil {
@@ -59,7 +60,7 @@ func (s *SQLStorage) PutBatchURLs(ctx context.Context, urls []storage.URLRecord)
 	defer stmt.Close()
 
 	for _, url := range urls {
-		_, err := stmt.ExecContext(timeoutCtx, url.UUID, url.ShortURL, url.OriginalURL)
+		_, err := stmt.ExecContext(timeoutCtx, url.UUID, url.UserID, url.ShortURL, url.OriginalURL)
 		if err != nil {
 			return err
 		}
@@ -68,19 +69,19 @@ func (s *SQLStorage) PutBatchURLs(ctx context.Context, urls []storage.URLRecord)
 	return tx.Commit()
 }
 
-func (s *SQLStorage) GetURL(ctx context.Context, shortURL string) (*storage.URLRecord, error) {
+func (s *SQLStorage) GetURL(ctx context.Context, shortURL, userID string) (*storage.URLRecord, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 
 	query := `
-		SELECT id, short_url, original_url 
+		SELECT id, user_id, short_url, original_url 
 		FROM short_urls
-		WHERE short_url = $1`
+		WHERE short_url = $1 AND user_id = $2`
 
-	row := s.db.QueryRowContext(timeoutCtx, query, shortURL)
+	row := s.db.QueryRowContext(timeoutCtx, query, shortURL, userID)
 
 	var url storage.URLRecord
-	if err := row.Scan(&url.UUID, &url.ShortURL, &url.OriginalURL); err != nil {
+	if err := row.Scan(&url.UUID, &url.UserID, &url.ShortURL, &url.OriginalURL); err != nil {
 		return nil, err
 	}
 
@@ -89,6 +90,42 @@ func (s *SQLStorage) GetURL(ctx context.Context, shortURL string) (*storage.URLR
 	}
 
 	return &url, nil
+}
+
+func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]*storage.URLRecord, error) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
+	defer cancel()
+
+	query := `
+		SELECT id, user_id, short_url, original_url 
+		FROM short_urls
+		WHERE user_id = $1`
+
+	rows, err := s.db.QueryContext(timeoutCtx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var records []*storage.URLRecord
+	for rows.Next() {
+		var r storage.URLRecord
+		if err := rows.Scan(&r.UUID, &r.UserID, &r.ShortURL, &r.OriginalURL); err != nil {
+			return nil, err
+		}
+
+		records = append(records, &r)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(records) == 0 {
+		return nil, fmt.Errorf("no short urls for id %s", userID)
+	}
+
+	return records, nil
 }
 
 func (s *SQLStorage) Ping() error {
@@ -112,21 +149,18 @@ func CreateTable(db *sql.DB) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	query := `
 		CREATE TABLE IF NOT EXISTS short_urls (
 			id UUID,
+			user_id UUID,
 			short_url VARCHAR PRIMARY KEY,
   			original_url VARCHAR UNIQUE,
   			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`
-	tx.ExecContext(ctx, query)
 
-	tx.Commit()
+	_, err := db.ExecContext(ctx, query)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

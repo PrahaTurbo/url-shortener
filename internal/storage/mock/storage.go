@@ -36,18 +36,33 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // GetURL mocks base method.
-func (m *MockRepository) GetURL(ctx context.Context, id string) (*storage.URLRecord, error) {
+func (m *MockRepository) GetURL(ctx context.Context, shortURL, userID string) (*storage.URLRecord, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetURL", ctx, id)
+	ret := m.ctrl.Call(m, "GetURL", ctx, shortURL, userID)
 	ret0, _ := ret[0].(*storage.URLRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetURL indicates an expected call of GetURL.
-func (mr *MockRepositoryMockRecorder) GetURL(ctx, id interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) GetURL(ctx, shortURL, userID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetURL", reflect.TypeOf((*MockRepository)(nil).GetURL), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetURL", reflect.TypeOf((*MockRepository)(nil).GetURL), ctx, shortURL, userID)
+}
+
+// GetURLsByUserID mocks base method.
+func (m *MockRepository) GetURLsByUserID(ctx context.Context, userID string) ([]*storage.URLRecord, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetURLsByUserID", ctx, userID)
+	ret0, _ := ret[0].([]*storage.URLRecord)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetURLsByUserID indicates an expected call of GetURLsByUserID.
+func (mr *MockRepositoryMockRecorder) GetURLsByUserID(ctx, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetURLsByUserID", reflect.TypeOf((*MockRepository)(nil).GetURLsByUserID), ctx, userID)
 }
 
 // Ping mocks base method.
@@ -65,7 +80,7 @@ func (mr *MockRepositoryMockRecorder) Ping() *gomock.Call {
 }
 
 // PutBatchURLs mocks base method.
-func (m *MockRepository) PutBatchURLs(ctx context.Context, urls []storage.URLRecord) error {
+func (m *MockRepository) PutBatchURLs(ctx context.Context, urls []*storage.URLRecord) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PutBatchURLs", ctx, urls)
 	ret0, _ := ret[0].(error)
@@ -79,7 +94,7 @@ func (mr *MockRepositoryMockRecorder) PutBatchURLs(ctx, urls interface{}) *gomoc
 }
 
 // PutURL mocks base method.
-func (m *MockRepository) PutURL(ctx context.Context, url storage.URLRecord) error {
+func (m *MockRepository) PutURL(ctx context.Context, url *storage.URLRecord) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PutURL", ctx, url)
 	ret0, _ := ret[0].(error)

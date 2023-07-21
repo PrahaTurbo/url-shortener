@@ -12,16 +12,18 @@ type App interface {
 }
 
 type application struct {
-	addr   string
-	srv    service.Service
-	logger *logger.Logger
+	addr      string
+	srv       service.Service
+	logger    *logger.Logger
+	jwtSecret string
 }
 
-func NewApp(addr string, srv service.Service, logger *logger.Logger) App {
+func NewApp(addr, jwtSecret string, srv service.Service, logger *logger.Logger) App {
 	return &application{
-		addr:   addr,
-		srv:    srv,
-		logger: logger,
+		addr:      addr,
+		srv:       srv,
+		logger:    logger,
+		jwtSecret: jwtSecret,
 	}
 }
 

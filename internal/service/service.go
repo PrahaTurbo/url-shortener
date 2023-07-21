@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"fmt"
+	"github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"github.com/google/uuid"
@@ -24,28 +26,27 @@ func NewService(baseURL string, storage storage.Repository) Service {
 	}
 }
 
-func (s *Service) SaveURL(ctx context.Context, url string) (string, error) {
-	id := s.generateID(url)
+func (s *Service) SaveURL(ctx context.Context, originalURL string) (string, error) {
+	shortURL := s.generateShortURL(originalURL)
 
-	if s.alreadyInStorage(ctx, id) {
-		return s.formURL(id), ErrAlready
+	if s.alreadyInStorage(ctx, shortURL) {
+		return s.formURL(shortURL), ErrAlready
 	}
 
-	r := storage.URLRecord{
-		UUID:        uuid.New().String(),
-		ShortURL:    id,
-		OriginalURL: url,
-	}
-
-	if err := s.Storage.PutURL(ctx, r); err != nil {
+	r, err := s.createURLRecord(ctx, shortURL, originalURL)
+	if err != nil {
 		return "", err
 	}
 
-	return s.formURL(id), nil
+	if err = s.Storage.PutURL(ctx, r); err != nil {
+		return "", err
+	}
+
+	return s.formURL(shortURL), nil
 }
 
 func (s *Service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([]models.BatchResponse, error) {
-	records := make([]storage.URLRecord, 0, len(batch))
+	records := make([]*storage.URLRecord, 0, len(batch))
 	response := make([]models.BatchResponse, 0, len(batch))
 
 	for _, req := range batch {
@@ -53,21 +54,22 @@ func (s *Service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([
 			return nil, errors.New("no url in original_url field")
 		}
 
-		id := s.generateID(req.OriginalURL)
+		shortURL := s.generateShortURL(req.OriginalURL)
 
 		var res models.BatchResponse
 		res.CorrelationID = req.CorrelationID
-		res.ShortURL = s.formURL(id)
+		res.ShortURL = s.formURL(shortURL)
 		response = append(response, res)
 
-		if s.alreadyInStorage(ctx, id) {
+		if s.alreadyInStorage(ctx, shortURL) {
 			continue
 		}
 
-		var r storage.URLRecord
-		r.ShortURL = s.generateID(req.OriginalURL)
-		r.OriginalURL = req.OriginalURL
-		r.UUID = uuid.New().String()
+		r, err := s.createURLRecord(ctx, shortURL, req.OriginalURL)
+		if err != nil {
+			return nil, err
+		}
+
 		records = append(records, r)
 	}
 
@@ -78,8 +80,13 @@ func (s *Service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([
 	return response, nil
 }
 
-func (s *Service) GetURL(ctx context.Context, id string) (string, error) {
-	r, err := s.Storage.GetURL(ctx, id)
+func (s *Service) GetURL(ctx context.Context, shortURL string) (string, error) {
+	userID, err := s.extractUserIDFromCtx(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	r, err := s.Storage.GetURL(ctx, shortURL, userID)
 	if err != nil || r == nil {
 		return "", err
 	}
@@ -87,11 +94,36 @@ func (s *Service) GetURL(ctx context.Context, id string) (string, error) {
 	return r.OriginalURL, nil
 }
 
+func (s *Service) GetURLsByUserID(ctx context.Context) ([]models.UserURLsResponse, error) {
+	userID, err := s.extractUserIDFromCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	records, err := s.Storage.GetURLsByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var response []models.UserURLsResponse
+
+	for _, record := range records {
+		r := models.UserURLsResponse{
+			ShortURL:    record.ShortURL,
+			OriginalURL: record.OriginalURL,
+		}
+
+		response = append(response, r)
+	}
+
+	return response, nil
+}
+
 func (s *Service) PingDB() error {
 	return s.Storage.Ping()
 }
 
-func (s *Service) generateID(url string) string {
+func (s *Service) generateShortURL(url string) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(url))
 	hash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
@@ -100,14 +132,40 @@ func (s *Service) generateID(url string) string {
 	return truncatedHash
 }
 
-func (s *Service) formURL(id string) string {
-	return s.baseURL + "/" + id
+func (s *Service) formURL(shortURL string) string {
+	return s.baseURL + "/" + shortURL
 }
 
-func (s *Service) alreadyInStorage(ctx context.Context, id string) bool {
-	if _, err := s.GetURL(ctx, id); err == nil {
+func (s *Service) alreadyInStorage(ctx context.Context, shortURL string) bool {
+	if _, err := s.GetURL(ctx, shortURL); err == nil {
 		return true
 	}
 
 	return false
+}
+
+func (s *Service) createURLRecord(ctx context.Context, shortURL, originalURL string) (*storage.URLRecord, error) {
+	userID, err := s.extractUserIDFromCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	r := &storage.URLRecord{
+		UUID:        uuid.New().String(),
+		ShortURL:    shortURL,
+		OriginalURL: originalURL,
+		UserID:      userID,
+	}
+
+	return r, nil
+}
+
+func (s *Service) extractUserIDFromCtx(ctx context.Context) (string, error) {
+	userIDVal := ctx.Value(config.ContextUserIDKeyConst)
+	userID, ok := userIDVal.(string)
+	if !ok {
+		return "", fmt.Errorf("cannot extract userID from context")
+	}
+
+	return userID, nil
 }
