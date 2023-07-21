@@ -5,13 +5,9 @@ import (
 	"os"
 )
 
-type CookieNameType string
 type UserIDKeyType string
 
-const (
-	JWTTokenCookieName CookieNameType = "jwtToken"
-	UserIDKey          UserIDKeyType  = "userID"
-)
+const UserIDKey UserIDKeyType = "userID"
 
 type Config struct {
 	Addr            string

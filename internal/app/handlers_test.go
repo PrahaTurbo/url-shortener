@@ -108,7 +108,7 @@ func Test_application_makeURL(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
-			ctx := context.WithValue(request.Context(), string(config.UserIDKey), "mocked-user-id")
+			ctx := context.WithValue(request.Context(), config.UserIDKey, "mocked-user-id")
 			request = request.WithContext(ctx)
 
 			w := httptest.NewRecorder()
@@ -181,7 +181,7 @@ func Test_application_getOrigin(t *testing.T) {
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiCtx))
 			chiCtx.URLParams.Add("id", tt.request[1:])
 
-			ctx := context.WithValue(r.Context(), string(config.UserIDKey), "mocked-user-id")
+			ctx := context.WithValue(r.Context(), config.UserIDKey, "mocked-user-id")
 			r = r.WithContext(ctx)
 
 			app.getOriginHandler(w, r)
@@ -265,7 +265,7 @@ func Test_application_jsonHandler(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
-			ctx := context.WithValue(request.Context(), string(config.UserIDKey), "mocked-user-id")
+			ctx := context.WithValue(request.Context(), config.UserIDKey, "mocked-user-id")
 			request = request.WithContext(ctx)
 
 			w := httptest.NewRecorder()
@@ -376,7 +376,7 @@ func Test_application_batchHandler(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
-			ctx := context.WithValue(request.Context(), string(config.UserIDKey), "mocked-user-id")
+			ctx := context.WithValue(request.Context(), config.UserIDKey, "mocked-user-id")
 			request = request.WithContext(ctx)
 
 			w := httptest.NewRecorder()
