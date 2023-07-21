@@ -72,12 +72,12 @@ func TestService_SaveURL(t *testing.T) {
 		Return(nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL, gomock.Any()).
-		Return(&urlRecord, nil)
+		GetURL(gomock.Any(), urlRecord.ShortURL).
+		Return(urlRecord.OriginalURL, nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), "FgAJzm", gomock.Any()).
-		Return(nil, errors.New("no url"))
+		GetURL(gomock.Any(), "FgAJzm").
+		Return("", errors.New("no url"))
 
 	srv := setupService(s)
 
@@ -126,12 +126,12 @@ func TestService_GetURL(t *testing.T) {
 	}
 
 	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL, gomock.Any()).
-		Return(&urlRecord, nil)
+		GetURL(gomock.Any(), urlRecord.ShortURL).
+		Return(urlRecord.OriginalURL, nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), "abc", gomock.Any()).
-		Return(nil, errors.New("no url"))
+		GetURL(gomock.Any(), "abc").
+		Return("", errors.New("no url"))
 
 	srv := setupService(s)
 
@@ -185,8 +185,8 @@ func TestService_SaveBatch(t *testing.T) {
 	ctx := context.WithValue(context.Background(), config.ContextUserIDKeyConst, "mocked-user-id")
 
 	s.EXPECT().
-		GetURL(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(nil, errors.New("no url")).AnyTimes()
+		GetURL(gomock.Any(), gomock.Any()).
+		Return("", errors.New("no url")).AnyTimes()
 
 	srv := setupService(s)
 

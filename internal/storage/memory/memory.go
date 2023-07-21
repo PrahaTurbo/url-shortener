@@ -13,20 +13,17 @@ import (
 )
 
 type InMemStorage struct {
-	db              map[Key]*storage.URLRecord
+	urls            map[string]string
+	users           map[string][]*storage.URLRecord
 	storageFilePath string
 	logger          *logger.Logger
 	mu              sync.Mutex
 }
 
-type Key struct {
-	UserID   string
-	ShortURL string
-}
-
 func NewInMemStorage(filePath string, logger *logger.Logger) storage.Repository {
 	s := &InMemStorage{
-		db:              make(map[Key]*storage.URLRecord),
+		urls:            make(map[string]string),
+		users:           make(map[string][]*storage.URLRecord),
 		storageFilePath: filePath,
 		logger:          logger,
 	}
@@ -42,12 +39,8 @@ func (s *InMemStorage) PutURL(_ context.Context, r *storage.URLRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	k := Key{
-		UserID:   r.UserID,
-		ShortURL: r.ShortURL,
-	}
-
-	s.db[k] = r
+	s.urls[r.ShortURL] = r.OriginalURL
+	s.users[r.UserID] = append(s.users[r.UserID], r)
 
 	if err := s.writeRecordToFile(r); err != nil {
 		return err
@@ -66,35 +59,24 @@ func (s *InMemStorage) PutBatchURLs(ctx context.Context, urls []*storage.URLReco
 	return nil
 }
 
-func (s *InMemStorage) GetURL(_ context.Context, shortURL, userID string) (*storage.URLRecord, error) {
+func (s *InMemStorage) GetURL(_ context.Context, shortURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	k := Key{
-		UserID:   userID,
-		ShortURL: shortURL,
-	}
-
-	record, ok := s.db[k]
+	originalURL, ok := s.urls[shortURL]
 	if !ok {
-		return nil, fmt.Errorf("no url for id: %s", shortURL)
+		return "", fmt.Errorf("no url for id: %s", shortURL)
 	}
 
-	return record, nil
+	return originalURL, nil
 }
 
 func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]*storage.URLRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var records []*storage.URLRecord
-	for k, v := range s.db {
-		if k.UserID == userID {
-			records = append(records, v)
-		}
-	}
-
-	if len(records) == 0 {
+	records, ok := s.users[userID]
+	if !ok {
 		return nil, fmt.Errorf("no short urls for id %s", userID)
 	}
 
@@ -122,12 +104,8 @@ func (s *InMemStorage) restoreFromFile() error {
 			return err
 		}
 
-		k := Key{
-			UserID:   r.UserID,
-			ShortURL: r.ShortURL,
-		}
-
-		s.db[k] = &r
+		s.urls[r.ShortURL] = r.OriginalURL
+		s.users[r.UserID] = append(s.users[r.UserID], &r)
 	}
 
 	return nil

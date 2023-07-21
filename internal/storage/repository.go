@@ -7,7 +7,7 @@ import (
 type Repository interface {
 	PutURL(ctx context.Context, url *URLRecord) error
 	PutBatchURLs(ctx context.Context, urls []*URLRecord) error
-	GetURL(ctx context.Context, shortURL, userID string) (*URLRecord, error)
+	GetURL(ctx context.Context, shortURL string) (string, error)
 	GetURLsByUserID(ctx context.Context, userID string) ([]*URLRecord, error)
 	Ping() error
 }

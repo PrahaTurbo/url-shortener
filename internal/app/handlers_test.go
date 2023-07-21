@@ -49,12 +49,12 @@ func Test_application_makeURL(t *testing.T) {
 	}
 
 	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL, gomock.Any()).
-		Return(&urlRecord, nil)
+		GetURL(gomock.Any(), urlRecord.ShortURL).
+		Return(urlRecord.OriginalURL, nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), "FgAJzm", gomock.Any()).
-		Return(nil, errors.New("no url"))
+		GetURL(gomock.Any(), "FgAJzm").
+		Return("", errors.New("no url"))
 
 	s.EXPECT().
 		PutURL(gomock.Any(), gomock.Any()).
@@ -140,12 +140,12 @@ func Test_application_getOrigin(t *testing.T) {
 	}
 
 	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL, gomock.Any()).
-		Return(&urlRecord, nil)
+		GetURL(gomock.Any(), urlRecord.ShortURL).
+		Return(urlRecord.OriginalURL, nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), "Azcxc", gomock.Any()).
-		Return(nil, errors.New("no url"))
+		GetURL(gomock.Any(), "Azcxc").
+		Return("", errors.New("no url"))
 
 	app := setupTestApp(s)
 
@@ -213,12 +213,12 @@ func Test_application_jsonHandler(t *testing.T) {
 	}
 
 	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL, gomock.Any()).
-		Return(&urlRecord, nil)
+		GetURL(gomock.Any(), urlRecord.ShortURL).
+		Return(urlRecord.OriginalURL, nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), "FgAJzm", gomock.Any()).
-		Return(nil, errors.New("no url"))
+		GetURL(gomock.Any(), "FgAJzm").
+		Return("", errors.New("no url"))
 
 	s.EXPECT().
 		PutURL(gomock.Any(), gomock.Any()).
@@ -336,8 +336,8 @@ func Test_application_batchHandler(t *testing.T) {
 	s := mock.NewMockRepository(ctrl)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(nil, errors.New("no url")).AnyTimes()
+		GetURL(gomock.Any(), gomock.Any()).
+		Return("", errors.New("no url")).AnyTimes()
 
 	s.EXPECT().PutBatchURLs(gomock.Any(), gomock.Any()).
 		Return(nil).AnyTimes()

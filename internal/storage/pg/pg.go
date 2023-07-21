@@ -69,27 +69,27 @@ func (s *SQLStorage) PutBatchURLs(ctx context.Context, urls []*storage.URLRecord
 	return tx.Commit()
 }
 
-func (s *SQLStorage) GetURL(ctx context.Context, shortURL, userID string) (*storage.URLRecord, error) {
+func (s *SQLStorage) GetURL(ctx context.Context, shortURL string) (string, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 
 	query := `
-		SELECT id, user_id, short_url, original_url 
+		SELECT original_url
 		FROM short_urls
-		WHERE short_url = $1 AND user_id = $2`
+		WHERE short_url = $1`
 
-	row := s.db.QueryRowContext(timeoutCtx, query, shortURL, userID)
+	row := s.db.QueryRowContext(timeoutCtx, query, shortURL)
 
-	var url storage.URLRecord
-	if err := row.Scan(&url.UUID, &url.UserID, &url.ShortURL, &url.OriginalURL); err != nil {
-		return nil, err
+	var originalURL string
+	if err := row.Scan(&originalURL); err != nil {
+		return "", err
 	}
 
 	if err := row.Err(); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return &url, nil
+	return originalURL, nil
 }
 
 func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]*storage.URLRecord, error) {

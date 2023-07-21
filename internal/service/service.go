@@ -81,17 +81,12 @@ func (s *Service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([
 }
 
 func (s *Service) GetURL(ctx context.Context, shortURL string) (string, error) {
-	userID, err := s.extractUserIDFromCtx(ctx)
-	if err != nil {
+	originalURL, err := s.Storage.GetURL(ctx, shortURL)
+	if err != nil || originalURL == "" {
 		return "", err
 	}
 
-	r, err := s.Storage.GetURL(ctx, shortURL, userID)
-	if err != nil || r == nil {
-		return "", err
-	}
-
-	return r.OriginalURL, nil
+	return originalURL, nil
 }
 
 func (s *Service) GetURLsByUserID(ctx context.Context) ([]models.UserURLsResponse, error) {
