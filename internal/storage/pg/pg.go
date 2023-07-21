@@ -128,6 +128,29 @@ func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]*sto
 	return records, nil
 }
 
+func (s *SQLStorage) CheckExistence(ctx context.Context, shortURL, userID string) error {
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
+	defer cancel()
+
+	query := `
+		SELECT id 
+		FROM short_urls
+		WHERE user_id = $1 AND short_url = $2`
+
+	row := s.db.QueryRowContext(timeoutCtx, query, userID, shortURL)
+
+	var id string
+	if err := row.Scan(&id); err != nil {
+		return err
+	}
+
+	if err := row.Err(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *SQLStorage) Ping() error {
 	return s.db.Ping()
 }

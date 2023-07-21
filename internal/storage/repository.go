@@ -9,6 +9,7 @@ type Repository interface {
 	PutBatchURLs(ctx context.Context, urls []*URLRecord) error
 	GetURL(ctx context.Context, shortURL string) (string, error)
 	GetURLsByUserID(ctx context.Context, userID string) ([]*URLRecord, error)
+	CheckExistence(ctx context.Context, shortURL, userID string) error
 	Ping() error
 }
 

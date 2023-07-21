@@ -29,13 +29,20 @@ func NewService(baseURL string, storage storage.Repository) Service {
 func (s *Service) SaveURL(ctx context.Context, originalURL string) (string, error) {
 	shortURL := s.generateShortURL(originalURL)
 
-	if s.alreadyInStorage(ctx, shortURL) {
+	userID, err := s.extractUserIDFromCtx(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	if s.alreadyInStorage(ctx, shortURL, userID) {
 		return s.formURL(shortURL), ErrAlready
 	}
 
-	r, err := s.createURLRecord(ctx, shortURL, originalURL)
-	if err != nil {
-		return "", err
+	r := &storage.URLRecord{
+		UUID:        uuid.New().String(),
+		ShortURL:    shortURL,
+		OriginalURL: originalURL,
+		UserID:      userID,
 	}
 
 	if err = s.Storage.PutURL(ctx, r); err != nil {
@@ -49,6 +56,11 @@ func (s *Service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([
 	records := make([]*storage.URLRecord, 0, len(batch))
 	response := make([]models.BatchResponse, 0, len(batch))
 
+	userID, err := s.extractUserIDFromCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, req := range batch {
 		if req.OriginalURL == "" {
 			return nil, errors.New("no url in original_url field")
@@ -61,13 +73,15 @@ func (s *Service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([
 		res.ShortURL = s.formURL(shortURL)
 		response = append(response, res)
 
-		if s.alreadyInStorage(ctx, shortURL) {
+		if s.alreadyInStorage(ctx, shortURL, userID) {
 			continue
 		}
 
-		r, err := s.createURLRecord(ctx, shortURL, req.OriginalURL)
-		if err != nil {
-			return nil, err
+		r := &storage.URLRecord{
+			UUID:        uuid.New().String(),
+			ShortURL:    shortURL,
+			OriginalURL: req.OriginalURL,
+			UserID:      userID,
 		}
 
 		records = append(records, r)
@@ -131,28 +145,12 @@ func (s *Service) formURL(shortURL string) string {
 	return s.baseURL + "/" + shortURL
 }
 
-func (s *Service) alreadyInStorage(ctx context.Context, shortURL string) bool {
-	if _, err := s.GetURL(ctx, shortURL); err == nil {
+func (s *Service) alreadyInStorage(ctx context.Context, shortURL, userID string) bool {
+	if err := s.Storage.CheckExistence(ctx, shortURL, userID); err == nil {
 		return true
 	}
 
 	return false
-}
-
-func (s *Service) createURLRecord(ctx context.Context, shortURL, originalURL string) (*storage.URLRecord, error) {
-	userID, err := s.extractUserIDFromCtx(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	r := &storage.URLRecord{
-		UUID:        uuid.New().String(),
-		ShortURL:    shortURL,
-		OriginalURL: originalURL,
-		UserID:      userID,
-	}
-
-	return r, nil
 }
 
 func (s *Service) extractUserIDFromCtx(ctx context.Context) (string, error) {

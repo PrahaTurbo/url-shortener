@@ -47,12 +47,12 @@ func Test_application_makeURL(t *testing.T) {
 	}
 
 	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL).
-		Return(urlRecord.OriginalURL, nil)
+		CheckExistence(gomock.Any(), urlRecord.ShortURL, "1").
+		Return(nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), "FgAJzm").
-		Return("", errors.New("no url"))
+		CheckExistence(gomock.Any(), "FgAJzm", "1").
+		Return(errors.New("no url"))
 
 	s.EXPECT().
 		PutURL(gomock.Any(), gomock.Any()).
@@ -108,7 +108,7 @@ func Test_application_makeURL(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
-			ctx := context.WithValue(request.Context(), config.UserIDKey, "mocked-user-id")
+			ctx := context.WithValue(request.Context(), config.UserIDKey, "1")
 			request = request.WithContext(ctx)
 
 			w := httptest.NewRecorder()
@@ -181,7 +181,7 @@ func Test_application_getOrigin(t *testing.T) {
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiCtx))
 			chiCtx.URLParams.Add("id", tt.request[1:])
 
-			ctx := context.WithValue(r.Context(), config.UserIDKey, "mocked-user-id")
+			ctx := context.WithValue(r.Context(), config.UserIDKey, "1")
 			r = r.WithContext(ctx)
 
 			app.getOriginHandler(w, r)
@@ -207,12 +207,12 @@ func Test_application_jsonHandler(t *testing.T) {
 	}
 
 	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL).
-		Return(urlRecord.OriginalURL, nil)
+		CheckExistence(gomock.Any(), urlRecord.ShortURL, "1").
+		Return(nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), "FgAJzm").
-		Return("", errors.New("no url"))
+		CheckExistence(gomock.Any(), "FgAJzm", "1").
+		Return(errors.New("no url"))
 
 	s.EXPECT().
 		PutURL(gomock.Any(), gomock.Any()).
@@ -265,7 +265,7 @@ func Test_application_jsonHandler(t *testing.T) {
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
-			ctx := context.WithValue(request.Context(), config.UserIDKey, "mocked-user-id")
+			ctx := context.WithValue(request.Context(), config.UserIDKey, "1")
 			request = request.WithContext(ctx)
 
 			w := httptest.NewRecorder()
@@ -330,8 +330,8 @@ func Test_application_batchHandler(t *testing.T) {
 	s := mock.NewMockRepository(ctrl)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), gomock.Any()).
-		Return("", errors.New("no url")).AnyTimes()
+		CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(errors.New("no url")).AnyTimes()
 
 	s.EXPECT().PutBatchURLs(gomock.Any(), gomock.Any()).
 		Return(nil).AnyTimes()

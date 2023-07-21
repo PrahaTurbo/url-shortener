@@ -83,6 +83,24 @@ func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]*sto
 	return records, nil
 }
 
+func (s *InMemStorage) CheckExistence(_ context.Context, shortURL, userID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	records, ok := s.users[userID]
+	if !ok {
+		return fmt.Errorf("user not found")
+	}
+
+	for _, r := range records {
+		if r.ShortURL == shortURL {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("no urls for user")
+}
+
 func (s *InMemStorage) Ping() error {
 	return errors.New("no connection to sql database")
 }

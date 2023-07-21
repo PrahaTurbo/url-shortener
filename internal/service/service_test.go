@@ -59,7 +59,7 @@ func TestService_generateID(t *testing.T) {
 func TestService_SaveURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	s := mock.NewMockRepository(ctrl)
-	ctx := context.WithValue(context.Background(), config.UserIDKey, "mocked-user-id")
+	ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
 
 	urlRecord := storage.URLRecord{
 		ShortURL:    "fpCk-c",
@@ -71,12 +71,12 @@ func TestService_SaveURL(t *testing.T) {
 		Return(nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL).
-		Return(urlRecord.OriginalURL, nil)
+		CheckExistence(gomock.Any(), urlRecord.ShortURL, "1").
+		Return(nil)
 
 	s.EXPECT().
-		GetURL(gomock.Any(), "FgAJzm").
-		Return("", errors.New("no url"))
+		CheckExistence(gomock.Any(), "FgAJzm", "1").
+		Return(errors.New("no url"))
 
 	srv := setupService(s)
 
@@ -116,7 +116,7 @@ func TestService_SaveURL(t *testing.T) {
 func TestService_GetURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	s := mock.NewMockRepository(ctrl)
-	ctx := context.WithValue(context.Background(), config.UserIDKey, "mocked-user-id")
+	ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
 
 	urlRecord := storage.URLRecord{
 		ShortURL:    "fpCk-c",
@@ -180,11 +180,11 @@ func TestService_GetURL(t *testing.T) {
 func TestService_SaveBatch(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	s := mock.NewMockRepository(ctrl)
-	ctx := context.WithValue(context.Background(), config.UserIDKey, "mocked-user-id")
+	ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
 
 	s.EXPECT().
-		GetURL(gomock.Any(), gomock.Any()).
-		Return("", errors.New("no url")).AnyTimes()
+		CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(errors.New("no url")).AnyTimes()
 
 	srv := setupService(s)
 
