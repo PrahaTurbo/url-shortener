@@ -156,7 +156,7 @@ func (s *Service) createURLRecord(ctx context.Context, shortURL, originalURL str
 }
 
 func (s *Service) extractUserIDFromCtx(ctx context.Context) (string, error) {
-	userIDVal := ctx.Value(string(config.UserIDKey))
+	userIDVal := ctx.Value(config.UserIDKey)
 	userID, ok := userIDVal.(string)
 	if !ok {
 		return "", fmt.Errorf("cannot extract userID from context")
