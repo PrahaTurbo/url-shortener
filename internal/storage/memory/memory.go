@@ -83,6 +83,25 @@ func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]*sto
 	return records, nil
 }
 
+func (s *InMemStorage) DeleteURLBatch(urls []string, user string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	records, ok := s.users[user]
+	if !ok {
+		s.logger.Error("cannot delete batch urls: user not found")
+		return
+	}
+
+	for _, url := range urls {
+		for _, record := range records {
+			if url == record.ShortURL {
+				record.DeletedFlag = true
+			}
+		}
+	}
+}
+
 func (s *InMemStorage) CheckExistence(_ context.Context, shortURL, userID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

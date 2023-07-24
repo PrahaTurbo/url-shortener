@@ -84,6 +84,7 @@ func createJWTAuthCookie(jwtSecret string) (*http.Cookie, error) {
 		Name:     jwtTokenCookieName,
 		Value:    tokenString,
 		HttpOnly: true,
+		Path:     "/",
 	}
 
 	return cookie, nil

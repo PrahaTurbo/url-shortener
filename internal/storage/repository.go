@@ -10,6 +10,7 @@ type Repository interface {
 	GetURL(ctx context.Context, shortURL string) (string, error)
 	GetURLsByUserID(ctx context.Context, userID string) ([]*URLRecord, error)
 	CheckExistence(ctx context.Context, shortURL, userID string) error
+	DeleteURLBatch(urls []string, user string)
 	Ping() error
 }
 
@@ -18,4 +19,5 @@ type URLRecord struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 	UserID      string `json:"user_id"`
+	DeletedFlag bool   `json:"is_deleted,omitempty"`
 }

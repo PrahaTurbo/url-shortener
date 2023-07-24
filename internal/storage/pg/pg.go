@@ -3,11 +3,16 @@ package pg
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
+	"go.uber.org/zap"
+	"strings"
 	"time"
 )
+
+var ErrURLDeleted = errors.New("url was deleted")
 
 type SQLStorage struct {
 	db     *sql.DB
@@ -74,19 +79,24 @@ func (s *SQLStorage) GetURL(ctx context.Context, shortURL string) (string, error
 	defer cancel()
 
 	query := `
-		SELECT original_url
+		SELECT original_url, is_deleted
 		FROM short_urls
 		WHERE short_url = $1`
 
 	row := s.db.QueryRowContext(timeoutCtx, query, shortURL)
 
 	var originalURL string
-	if err := row.Scan(&originalURL); err != nil {
+	var isDeleted bool
+	if err := row.Scan(&originalURL, &isDeleted); err != nil {
 		return "", err
 	}
 
 	if err := row.Err(); err != nil {
 		return "", err
+	}
+
+	if isDeleted {
+		return "", ErrURLDeleted
 	}
 
 	return originalURL, nil
@@ -151,6 +161,23 @@ func (s *SQLStorage) CheckExistence(ctx context.Context, shortURL, userID string
 	return nil
 }
 
+func (s *SQLStorage) DeleteURLBatch(urls []string, user string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	urlsString := "{" + strings.Join(urls, ",") + "}"
+
+	query := `
+		UPDATE short_urls 
+		SET is_deleted = true 
+		WHERE short_url = ANY($1::text[]) AND user_id = $2::uuid`
+
+	_, err := s.db.ExecContext(ctx, query, urlsString, user)
+	if err != nil {
+		s.logger.Error("cannot delete batch urls", zap.Error(err))
+	}
+}
+
 func (s *SQLStorage) Ping() error {
 	return s.db.Ping()
 }
@@ -174,10 +201,11 @@ func CreateTable(db *sql.DB) error {
 
 	query := `
 		CREATE TABLE IF NOT EXISTS short_urls (
-			id UUID,
+			id UUID UNIQUE,
 			user_id UUID,
-			short_url VARCHAR PRIMARY KEY,
-  			original_url VARCHAR UNIQUE,
+			short_url VARCHAR,
+  			original_url VARCHAR,
+  			is_deleted BOOLEAN DEFAULT false,
   			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`
 
 	_, err := db.ExecContext(ctx, query)

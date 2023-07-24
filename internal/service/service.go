@@ -2,40 +2,50 @@ package service
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"errors"
-	"fmt"
-	"github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"github.com/google/uuid"
+	"time"
 )
 
 var ErrAlready = errors.New("URL already in storage")
 
+type urlDeletionTask struct {
+	userID string
+	urls   []string
+}
+
 type Service struct {
-	Storage storage.Repository
-	baseURL string
+	Storage   storage.Repository
+	baseURL   string
+	delChan   chan urlDeletionTask
+	semaphore *semaphore
 }
 
 func NewService(baseURL string, storage storage.Repository) Service {
-	return Service{
-		Storage: storage,
-		baseURL: baseURL,
+	s := Service{
+		Storage:   storage,
+		baseURL:   baseURL,
+		delChan:   make(chan urlDeletionTask, 10),
+		semaphore: newSemaphore(5),
 	}
+
+	go s.startURLDeletionWorker(time.Second*10, 100)
+
+	return s
 }
 
 func (s *Service) SaveURL(ctx context.Context, originalURL string) (string, error) {
-	shortURL := s.generateShortURL(originalURL)
+	shortURL := generateShortURL(originalURL)
 
-	userID, err := s.extractUserIDFromCtx(ctx)
+	userID, err := extractUserIDFromCtx(ctx)
 	if err != nil {
 		return "", err
 	}
 
 	if s.alreadyInStorage(ctx, shortURL, userID) {
-		return s.formURL(shortURL), ErrAlready
+		return formURL(s.baseURL, shortURL), ErrAlready
 	}
 
 	r := &storage.URLRecord{
@@ -49,14 +59,14 @@ func (s *Service) SaveURL(ctx context.Context, originalURL string) (string, erro
 		return "", err
 	}
 
-	return s.formURL(shortURL), nil
+	return formURL(s.baseURL, shortURL), nil
 }
 
 func (s *Service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([]models.BatchResponse, error) {
 	records := make([]*storage.URLRecord, 0, len(batch))
 	response := make([]models.BatchResponse, 0, len(batch))
 
-	userID, err := s.extractUserIDFromCtx(ctx)
+	userID, err := extractUserIDFromCtx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -66,11 +76,11 @@ func (s *Service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([
 			return nil, errors.New("no url in original_url field")
 		}
 
-		shortURL := s.generateShortURL(req.OriginalURL)
+		shortURL := generateShortURL(req.OriginalURL)
 
 		var res models.BatchResponse
 		res.CorrelationID = req.CorrelationID
-		res.ShortURL = s.formURL(shortURL)
+		res.ShortURL = formURL(s.baseURL, shortURL)
 		response = append(response, res)
 
 		if s.alreadyInStorage(ctx, shortURL, userID) {
@@ -104,7 +114,7 @@ func (s *Service) GetURL(ctx context.Context, shortURL string) (string, error) {
 }
 
 func (s *Service) GetURLsByUserID(ctx context.Context) ([]models.UserURLsResponse, error) {
-	userID, err := s.extractUserIDFromCtx(ctx)
+	userID, err := extractUserIDFromCtx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +128,7 @@ func (s *Service) GetURLsByUserID(ctx context.Context) ([]models.UserURLsRespons
 
 	for _, record := range records {
 		r := models.UserURLsResponse{
-			ShortURL:    s.formURL(record.ShortURL),
+			ShortURL:    formURL(s.baseURL, record.ShortURL),
 			OriginalURL: record.OriginalURL,
 		}
 
@@ -128,21 +138,59 @@ func (s *Service) GetURLsByUserID(ctx context.Context) ([]models.UserURLsRespons
 	return response, nil
 }
 
+func (s *Service) DeleteURLs(ctx context.Context, urls []string) error {
+	userID, err := extractUserIDFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	delURL := urlDeletionTask{
+		userID: userID,
+		urls:   urls,
+	}
+
+	s.delChan <- delURL
+
+	return nil
+}
+
+func (s *Service) startURLDeletionWorker(interval time.Duration, batchSize int) {
+	ticker := time.NewTicker(interval)
+
+	var batchURLs []urlDeletionTask
+
+	for {
+		select {
+		case batch := <-s.delChan:
+			batchURLs = append(batchURLs, batch)
+
+			if len(batchURLs) >= batchSize {
+				s.handleDeletion(batchURLs)
+				batchURLs = nil
+			}
+		case <-ticker.C:
+			if len(batchURLs) > 0 {
+				s.handleDeletion(batchURLs)
+				batchURLs = nil
+			}
+		}
+	}
+}
+
+func (s *Service) handleDeletion(batchURLs []urlDeletionTask) {
+	for _, batch := range batchURLs {
+		s.semaphore.acquire()
+
+		go func(urls []string, user string) {
+			defer s.semaphore.release()
+
+			s.Storage.DeleteURLBatch(urls, user)
+		}(batch.urls, batch.userID)
+	}
+}
+
 func (s *Service) PingDB() error {
 	return s.Storage.Ping()
-}
-
-func (s *Service) generateShortURL(url string) string {
-	hasher := sha256.New()
-	hasher.Write([]byte(url))
-	hash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
-	truncatedHash := hash[:6]
-
-	return truncatedHash
-}
-
-func (s *Service) formURL(shortURL string) string {
-	return s.baseURL + "/" + shortURL
 }
 
 func (s *Service) alreadyInStorage(ctx context.Context, shortURL, userID string) bool {
@@ -151,14 +199,4 @@ func (s *Service) alreadyInStorage(ctx context.Context, shortURL, userID string)
 	}
 
 	return false
-}
-
-func (s *Service) extractUserIDFromCtx(ctx context.Context) (string, error) {
-	userIDVal := ctx.Value(config.UserIDKey)
-	userID, ok := userIDVal.(string)
-	if !ok {
-		return "", fmt.Errorf("cannot extract userID from context")
-	}
-
-	return userID, nil
 }

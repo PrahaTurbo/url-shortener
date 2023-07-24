@@ -19,6 +19,7 @@ func (a *application) Router() chi.Router {
 	r.Post("/api/shorten", a.jsonHandler)
 	r.Post("/api/shorten/batch", a.batchHandler)
 	r.Get("/api/user/urls", a.getUserURLsHandler)
+	r.Delete("/api/user/urls", a.deleteURLsHandler)
 	r.Get("/ping", a.pingHandler)
 
 	return r

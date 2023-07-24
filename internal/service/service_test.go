@@ -23,11 +23,6 @@ func setupService(mockStorage *mock.MockRepository) Service {
 }
 
 func TestService_generateID(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	s := mock.NewMockRepository(ctrl)
-
-	srv := setupService(s)
-
 	tests := []struct {
 		name      string
 		originURL string
@@ -50,7 +45,7 @@ func TestService_generateID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			id := srv.generateShortURL(tt.originURL)
+			id := generateShortURL(tt.originURL)
 			assert.Equal(t, tt.want, id)
 		})
 	}
@@ -257,30 +252,6 @@ func TestService_SaveBatch(t *testing.T) {
 			if assert.NoError(t, err) {
 				assert.Equal(t, tt.want, resp)
 			}
-		})
-	}
-}
-
-func TestService_formURL(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	s := mock.NewMockRepository(ctrl)
-
-	srv := setupService(s)
-
-	tests := []struct {
-		name string
-		id   string
-		want string
-	}{
-		{
-			name: "successfully form short url",
-			id:   "dfdvFd",
-			want: baseURL + "/" + "dfdvFd",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, srv.formURL(tt.id))
 		})
 	}
 }

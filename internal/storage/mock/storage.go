@@ -49,6 +49,18 @@ func (mr *MockRepositoryMockRecorder) CheckExistence(ctx, shortURL, userID inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckExistence", reflect.TypeOf((*MockRepository)(nil).CheckExistence), ctx, shortURL, userID)
 }
 
+// DeleteURLBatch mocks base method.
+func (m *MockRepository) DeleteURLBatch(urls []string, user string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DeleteURLBatch", urls, user)
+}
+
+// DeleteURLBatch indicates an expected call of DeleteURLBatch.
+func (mr *MockRepositoryMockRecorder) DeleteURLBatch(urls, user interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteURLBatch", reflect.TypeOf((*MockRepository)(nil).DeleteURLBatch), urls, user)
+}
+
 // GetURL mocks base method.
 func (m *MockRepository) GetURL(ctx context.Context, shortURL string) (string, error) {
 	m.ctrl.T.Helper()
