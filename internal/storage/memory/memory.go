@@ -35,7 +35,7 @@ func NewInMemStorage(filePath string, logger *logger.Logger) storage.Repository 
 	return s
 }
 
-func (s *InMemStorage) PutURL(_ context.Context, r *storage.URLRecord) error {
+func (s *InMemStorage) SaveURL(_ context.Context, r *storage.URLRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -49,9 +49,9 @@ func (s *InMemStorage) PutURL(_ context.Context, r *storage.URLRecord) error {
 	return nil
 }
 
-func (s *InMemStorage) PutBatchURLs(ctx context.Context, urls []*storage.URLRecord) error {
+func (s *InMemStorage) SaveURLBatch(ctx context.Context, urls []*storage.URLRecord) error {
 	for _, r := range urls {
-		if err := s.PutURL(ctx, r); err != nil {
+		if err := s.SaveURL(ctx, r); err != nil {
 			return err
 		}
 	}

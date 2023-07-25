@@ -55,7 +55,7 @@ func (s *Service) SaveURL(ctx context.Context, originalURL string) (string, erro
 		UserID:      userID,
 	}
 
-	if err = s.Storage.PutURL(ctx, r); err != nil {
+	if err = s.Storage.SaveURL(ctx, r); err != nil {
 		return "", err
 	}
 
@@ -97,7 +97,7 @@ func (s *Service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([
 		records = append(records, r)
 	}
 
-	if err := s.Storage.PutBatchURLs(ctx, records); err != nil {
+	if err := s.Storage.SaveURLBatch(ctx, records); err != nil {
 		return nil, err
 	}
 
@@ -144,12 +144,12 @@ func (s *Service) DeleteURLs(ctx context.Context, urls []string) error {
 		return err
 	}
 
-	delURL := urlDeletionTask{
+	task := urlDeletionTask{
 		userID: userID,
 		urls:   urls,
 	}
 
-	s.delChan <- delURL
+	s.delChan <- task
 
 	return nil
 }
@@ -157,35 +157,35 @@ func (s *Service) DeleteURLs(ctx context.Context, urls []string) error {
 func (s *Service) startURLDeletionWorker(interval time.Duration, batchSize int) {
 	ticker := time.NewTicker(interval)
 
-	var batchURLs []urlDeletionTask
+	var tasks []urlDeletionTask
 
 	for {
 		select {
-		case batch := <-s.delChan:
-			batchURLs = append(batchURLs, batch)
+		case task := <-s.delChan:
+			tasks = append(tasks, task)
 
-			if len(batchURLs) >= batchSize {
-				s.handleDeletion(batchURLs)
-				batchURLs = nil
+			if len(tasks) >= batchSize {
+				s.handleDeletion(tasks)
+				tasks = nil
 			}
 		case <-ticker.C:
-			if len(batchURLs) > 0 {
-				s.handleDeletion(batchURLs)
-				batchURLs = nil
+			if len(tasks) > 0 {
+				s.handleDeletion(tasks)
+				tasks = nil
 			}
 		}
 	}
 }
 
-func (s *Service) handleDeletion(batchURLs []urlDeletionTask) {
-	for _, batch := range batchURLs {
+func (s *Service) handleDeletion(tasks []urlDeletionTask) {
+	for _, task := range tasks {
 		s.semaphore.acquire()
 
 		go func(urls []string, user string) {
 			defer s.semaphore.release()
 
 			s.Storage.DeleteURLBatch(urls, user)
-		}(batch.urls, batch.userID)
+		}(task.urls, task.userID)
 	}
 }
 

@@ -105,30 +105,30 @@ func (mr *MockRepositoryMockRecorder) Ping() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockRepository)(nil).Ping))
 }
 
-// PutBatchURLs mocks base method.
-func (m *MockRepository) PutBatchURLs(ctx context.Context, urls []*storage.URLRecord) error {
+// SaveURL mocks base method.
+func (m *MockRepository) SaveURL(ctx context.Context, url *storage.URLRecord) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PutBatchURLs", ctx, urls)
+	ret := m.ctrl.Call(m, "SaveURL", ctx, url)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// PutBatchURLs indicates an expected call of PutBatchURLs.
-func (mr *MockRepositoryMockRecorder) PutBatchURLs(ctx, urls interface{}) *gomock.Call {
+// SaveURL indicates an expected call of SaveURL.
+func (mr *MockRepositoryMockRecorder) SaveURL(ctx, url interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutBatchURLs", reflect.TypeOf((*MockRepository)(nil).PutBatchURLs), ctx, urls)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveURL", reflect.TypeOf((*MockRepository)(nil).SaveURL), ctx, url)
 }
 
-// PutURL mocks base method.
-func (m *MockRepository) PutURL(ctx context.Context, url *storage.URLRecord) error {
+// SaveURLBatch mocks base method.
+func (m *MockRepository) SaveURLBatch(ctx context.Context, urls []*storage.URLRecord) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PutURL", ctx, url)
+	ret := m.ctrl.Call(m, "SaveURLBatch", ctx, urls)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// PutURL indicates an expected call of PutURL.
-func (mr *MockRepositoryMockRecorder) PutURL(ctx, url interface{}) *gomock.Call {
+// SaveURLBatch indicates an expected call of SaveURLBatch.
+func (mr *MockRepositoryMockRecorder) SaveURLBatch(ctx, urls interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutURL", reflect.TypeOf((*MockRepository)(nil).PutURL), ctx, url)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveURLBatch", reflect.TypeOf((*MockRepository)(nil).SaveURLBatch), ctx, urls)
 }

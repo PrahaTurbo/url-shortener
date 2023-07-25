@@ -28,7 +28,7 @@ func NewSQLStorage(db *sql.DB, logger *logger.Logger) storage.Repository {
 	return s
 }
 
-func (s *SQLStorage) PutURL(ctx context.Context, url *storage.URLRecord) error {
+func (s *SQLStorage) SaveURL(ctx context.Context, url *storage.URLRecord) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 
@@ -44,7 +44,7 @@ func (s *SQLStorage) PutURL(ctx context.Context, url *storage.URLRecord) error {
 	return nil
 }
 
-func (s *SQLStorage) PutBatchURLs(ctx context.Context, urls []*storage.URLRecord) error {
+func (s *SQLStorage) SaveURLBatch(ctx context.Context, urls []*storage.URLRecord) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 

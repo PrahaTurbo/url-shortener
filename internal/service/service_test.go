@@ -62,7 +62,7 @@ func TestService_SaveURL(t *testing.T) {
 	}
 
 	s.EXPECT().
-		PutURL(gomock.Any(), gomock.Any()).
+		SaveURL(gomock.Any(), gomock.Any()).
 		Return(nil)
 
 	s.EXPECT().
@@ -234,11 +234,11 @@ func TestService_SaveBatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.wantErr {
 				s.EXPECT().
-					PutBatchURLs(ctx, gomock.Any()).
+					SaveURLBatch(ctx, gomock.Any()).
 					Return(errors.New("cannot save batch urls"))
 			} else {
 				s.EXPECT().
-					PutBatchURLs(ctx, gomock.Any()).
+					SaveURLBatch(ctx, gomock.Any()).
 					Return(nil)
 			}
 

@@ -55,7 +55,7 @@ func Test_application_makeURL(t *testing.T) {
 		Return(errors.New("no url"))
 
 	s.EXPECT().
-		PutURL(gomock.Any(), gomock.Any()).
+		SaveURL(gomock.Any(), gomock.Any()).
 		Return(nil)
 
 	app := setupTestApp(s)
@@ -215,7 +215,7 @@ func Test_application_jsonHandler(t *testing.T) {
 		Return(errors.New("no url"))
 
 	s.EXPECT().
-		PutURL(gomock.Any(), gomock.Any()).
+		SaveURL(gomock.Any(), gomock.Any()).
 		Return(nil)
 
 	app := setupTestApp(s)
@@ -333,7 +333,7 @@ func Test_application_batchHandler(t *testing.T) {
 		CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(errors.New("no url")).AnyTimes()
 
-	s.EXPECT().PutBatchURLs(gomock.Any(), gomock.Any()).
+	s.EXPECT().SaveURLBatch(gomock.Any(), gomock.Any()).
 		Return(nil).AnyTimes()
 
 	app := setupTestApp(s)
