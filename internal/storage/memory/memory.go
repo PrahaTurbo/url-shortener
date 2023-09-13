@@ -94,10 +94,10 @@ func (s *InMemStorage) DeleteURLBatch(urls []string, user string) error {
 		return errors.New("user not found")
 	}
 
-	for _, url := range urls {
-		for _, record := range records {
-			if url == record.ShortURL {
-				record.DeletedFlag = true
+	for i := range records {
+		for _, url := range urls {
+			if url == records[i].ShortURL {
+				records[i].DeletedFlag = true
 			}
 		}
 	}
