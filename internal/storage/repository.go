@@ -2,22 +2,15 @@ package storage
 
 import (
 	"context"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
 
 type Repository interface {
-	SaveURL(ctx context.Context, url URLRecord) error
-	SaveURLBatch(ctx context.Context, urls []*URLRecord) error
+	SaveURL(ctx context.Context, url entity.URLRecord) error
+	SaveURLBatch(ctx context.Context, urls []*entity.URLRecord) error
 	GetURL(ctx context.Context, shortURL string) (string, error)
-	GetURLsByUserID(ctx context.Context, userID string) ([]URLRecord, error)
+	GetURLsByUserID(ctx context.Context, userID string) ([]entity.URLRecord, error)
 	CheckExistence(ctx context.Context, shortURL, userID string) error
 	DeleteURLBatch(urls []string, user string) error
 	Ping() error
-}
-
-type URLRecord struct {
-	UUID        string `json:"uuid"`
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-	UserID      string `json:"user_id"`
-	DeletedFlag bool   `json:"is_deleted,omitempty"`
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 	"os"
 	"sync"
 
@@ -16,7 +17,7 @@ import (
 
 type InMemStorage struct {
 	urls            map[string]string
-	users           map[string][]storage.URLRecord
+	users           map[string][]entity.URLRecord
 	storageFilePath string
 	logger          *logger.Logger
 	mu              sync.Mutex
@@ -25,7 +26,7 @@ type InMemStorage struct {
 func NewInMemStorage(filePath string, logger *logger.Logger) storage.Repository {
 	s := &InMemStorage{
 		urls:            make(map[string]string),
-		users:           make(map[string][]storage.URLRecord),
+		users:           make(map[string][]entity.URLRecord),
 		storageFilePath: filePath,
 		logger:          logger,
 	}
@@ -37,7 +38,7 @@ func NewInMemStorage(filePath string, logger *logger.Logger) storage.Repository 
 	return s
 }
 
-func (s *InMemStorage) SaveURL(_ context.Context, r storage.URLRecord) error {
+func (s *InMemStorage) SaveURL(_ context.Context, r entity.URLRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -51,7 +52,7 @@ func (s *InMemStorage) SaveURL(_ context.Context, r storage.URLRecord) error {
 	return nil
 }
 
-func (s *InMemStorage) SaveURLBatch(ctx context.Context, urls []*storage.URLRecord) error {
+func (s *InMemStorage) SaveURLBatch(ctx context.Context, urls []*entity.URLRecord) error {
 	for _, r := range urls {
 		if err := s.SaveURL(ctx, *r); err != nil {
 			return err
@@ -73,7 +74,7 @@ func (s *InMemStorage) GetURL(_ context.Context, shortURL string) (string, error
 	return originalURL, nil
 }
 
-func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]storage.URLRecord, error) {
+func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]entity.URLRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -139,7 +140,7 @@ func (s *InMemStorage) restoreFromFile() error {
 
 	dec := json.NewDecoder(f)
 	for dec.More() {
-		var r storage.URLRecord
+		var r entity.URLRecord
 		if err := dec.Decode(&r); err != nil {
 			return err
 		}
@@ -151,7 +152,7 @@ func (s *InMemStorage) restoreFromFile() error {
 	return nil
 }
 
-func (s *InMemStorage) writeRecordToFile(r storage.URLRecord) error {
+func (s *InMemStorage) writeRecordToFile(r entity.URLRecord) error {
 	if s.storageFilePath == "" {
 		return nil
 	}

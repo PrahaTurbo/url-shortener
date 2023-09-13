@@ -2,15 +2,14 @@
 // Source: internal/storage/repository.go
 
 // Package mock is a generated GoMock package.
-package mock
+package mocks
 
 import (
 	context "context"
 	reflect "reflect"
 
+	entity "github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 	gomock "go.uber.org/mock/gomock"
-
-	storage "github.com/PrahaTurbo/url-shortener/internal/storage"
 )
 
 // MockRepository is a mock of Repository interface.
@@ -80,10 +79,10 @@ func (mr *MockRepositoryMockRecorder) GetURL(ctx, shortURL interface{}) *gomock.
 }
 
 // GetURLsByUserID mocks base method.
-func (m *MockRepository) GetURLsByUserID(ctx context.Context, userID string) ([]storage.URLRecord, error) {
+func (m *MockRepository) GetURLsByUserID(ctx context.Context, userID string) ([]entity.URLRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetURLsByUserID", ctx, userID)
-	ret0, _ := ret[0].([]storage.URLRecord)
+	ret0, _ := ret[0].([]entity.URLRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -109,7 +108,7 @@ func (mr *MockRepositoryMockRecorder) Ping() *gomock.Call {
 }
 
 // SaveURL mocks base method.
-func (m *MockRepository) SaveURL(ctx context.Context, url storage.URLRecord) error {
+func (m *MockRepository) SaveURL(ctx context.Context, url entity.URLRecord) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveURL", ctx, url)
 	ret0, _ := ret[0].(error)
@@ -123,7 +122,7 @@ func (mr *MockRepositoryMockRecorder) SaveURL(ctx, url interface{}) *gomock.Call
 }
 
 // SaveURLBatch mocks base method.
-func (m *MockRepository) SaveURLBatch(ctx context.Context, urls []*storage.URLRecord) error {
+func (m *MockRepository) SaveURLBatch(ctx context.Context, urls []*entity.URLRecord) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveURLBatch", ctx, urls)
 	ret0, _ := ret[0].(error)

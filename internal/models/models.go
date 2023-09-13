@@ -22,3 +22,8 @@ type UserURLsResponse struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+
+type URLDeletionTask struct {
+	UserID string
+	URLs   []string
+}

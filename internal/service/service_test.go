@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/mocks"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,124 +13,87 @@ import (
 
 	"github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
-	"github.com/PrahaTurbo/url-shortener/internal/storage"
-	"github.com/PrahaTurbo/url-shortener/internal/storage/mock"
 )
 
 var baseURL = "localhost:8080"
 
-func setupService(mockStorage *mock.MockRepository) Service {
-	return Service{
-		Storage: mockStorage,
+func setupService() service {
+	log, _ := logger.Initialize("debug")
+
+	return service{
 		baseURL: baseURL,
-	}
-}
-
-func TestService_generateID(t *testing.T) {
-	tests := []struct {
-		name      string
-		originURL string
-		want      string
-	}{
-		{
-			name:      "short url",
-			originURL: "https://yandex.ru",
-			want:      "FgAJzm",
-		},
-		{
-			name: "long url",
-			originURL: "https://ya.ru/showcaptcha?cc=1&mt=556239AC7B55DDEC0C06BBA1F6D6E2985D9F23603CAA1FF1DE1570FD960655C" +
-				"09742E97F4E3F557D3E0215CB02799693345D3F44BD26CDC971851D3F7C06C17AA43B3F8C793D92C6F562F3A9361005BF6BCFFA7B35DE3F4531D1" +
-				"&retpath=aHR0cHM6Ly95YS5ydS8__0b4e4aaaea7aedcb402e438c986228bc&t=2/1685895519/8234027974e84ca1528e1a19f6ac645a&u=370f6" +
-				"9e3-9f254057-c5a3e5d4-730886de&s=5e681ad4b522c86ec4bd1081837b33c1",
-			want: "yp58Qz",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			id := generateShortURL(tt.originURL)
-			assert.Equal(t, tt.want, id)
-		})
+		logger:  log,
 	}
 }
 
 func TestService_SaveURL(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	s := mock.NewMockRepository(ctrl)
-	ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
+	service := setupService()
 
-	urlRecord := storage.URLRecord{
-		ShortURL:    "fpCk-c",
-		OriginalURL: "https://ya.ru",
+	type want struct {
+		url string
+		err error
 	}
-
-	s.EXPECT().
-		SaveURL(gomock.Any(), gomock.Any()).
-		Return(nil)
-
-	s.EXPECT().
-		CheckExistence(gomock.Any(), urlRecord.ShortURL, "1").
-		Return(nil)
-
-	s.EXPECT().
-		CheckExistence(gomock.Any(), "FgAJzm", "1").
-		Return(errors.New("no url"))
-
-	srv := setupService(s)
 
 	tests := []struct {
 		name    string
 		url     string
-		want    string
-		wantErr error
+		prepare func(s *mocks.MockRepository)
+		want    want
 	}{
 		{
-			name:    "save url successfully",
-			url:     "https://yandex.ru",
-			want:    baseURL + "/" + "FgAJzm",
-			wantErr: nil,
+			name: "should save url successfully",
+			url:  "https://yandex.ru",
+			prepare: func(s *mocks.MockRepository) {
+				gomock.InOrder(
+					s.EXPECT().
+						CheckExistence(gomock.Any(), "FgAJzm", "1").
+						Return(errors.New("no url")),
+					s.EXPECT().
+						SaveURL(gomock.Any(), gomock.Any()).
+						Return(nil),
+				)
+			},
+			want: want{
+				url: baseURL + "/" + "FgAJzm",
+			},
 		},
 		{
-			name:    "don't save url that already in storage",
-			url:     urlRecord.OriginalURL,
-			want:    baseURL + "/" + urlRecord.ShortURL,
-			wantErr: ErrAlready,
+			name: "shouldn't save url that already in storage",
+			url:  "https://yandex.ru",
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					CheckExistence(gomock.Any(), "FgAJzm", "1").
+					Return(nil)
+			},
+			want: want{
+				url: baseURL + "/" + "FgAJzm",
+				err: ErrAlready,
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			shortURL, err := srv.SaveURL(ctx, tt.url)
+			ctrl := gomock.NewController(t)
+			storage := mocks.NewMockRepository(ctrl)
+			ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
 
-			if tt.wantErr != nil {
-				assert.Equal(t, tt.wantErr, err)
+			tt.prepare(storage)
+			service.Storage = storage
+
+			shortURL, err := service.SaveURL(ctx, tt.url)
+
+			if tt.want.err != nil {
+				assert.Equal(t, tt.want.err, err)
 			}
 
-			assert.Equal(t, tt.want, shortURL)
+			assert.Equal(t, tt.want.url, shortURL)
 		})
 	}
 }
 
 func TestService_GetURL(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	s := mock.NewMockRepository(ctrl)
-	ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
-
-	urlRecord := storage.URLRecord{
-		ShortURL:    "fpCk-c",
-		OriginalURL: "https://ya.ru",
-	}
-
-	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL).
-		Return(urlRecord.OriginalURL, nil)
-
-	s.EXPECT().
-		GetURL(gomock.Any(), "abc").
-		Return("", errors.New("no url"))
-
-	srv := setupService(s)
+	service := setupService()
 
 	type want struct {
 		url string
@@ -138,19 +103,30 @@ func TestService_GetURL(t *testing.T) {
 	tests := []struct {
 		name     string
 		shortURL string
+		prepare  func(s *mocks.MockRepository)
 		want     want
 	}{
 		{
-			name:     "get url",
-			shortURL: urlRecord.ShortURL,
+			name:     "should get origin url successfully",
+			shortURL: "fpCk-c",
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					GetURL(gomock.Any(), "fpCk-c").
+					Return("https://ya.ru", nil)
+			},
 			want: want{
-				url: urlRecord.OriginalURL,
+				url: "https://ya.ru",
 				err: false,
 			},
 		},
 		{
-			name:     "err when getting url with false id",
+			name:     "should fail when getting url with false id",
 			shortURL: "abc",
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					GetURL(gomock.Any(), "abc").
+					Return("", errors.New("no url"))
+			},
 			want: want{
 				url: "",
 				err: true,
@@ -160,8 +136,14 @@ func TestService_GetURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			storage := mocks.NewMockRepository(ctrl)
+			ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
 
-			url, err := srv.GetURL(ctx, tt.shortURL)
+			tt.prepare(storage)
+			service.Storage = storage
+
+			url, err := service.GetURL(ctx, tt.shortURL)
 			if !tt.want.err {
 				require.NoError(t, err)
 
@@ -175,84 +157,89 @@ func TestService_GetURL(t *testing.T) {
 }
 
 func TestService_SaveBatch(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	s := mock.NewMockRepository(ctrl)
-	ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
+	service := setupService()
 
-	s.EXPECT().
-		CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(errors.New("no url")).AnyTimes()
-
-	srv := setupService(s)
-
-	tests := []struct {
-		name    string
-		batch   []models.BatchRequest
-		want    []models.BatchResponse
-		wantErr bool
-	}{
+	batch := []models.BatchRequest{
 		{
-			name: "save batch successfully",
-			batch: []models.BatchRequest{
-				{
-					CorrelationID: "1",
-					OriginalURL:   "https://ya.ru",
-				},
-				{
-					CorrelationID: "2",
-					OriginalURL:   "https://yandex.ru",
-				},
-			},
-			want: []models.BatchResponse{
-				{
-					CorrelationID: "1",
-					ShortURL:      baseURL + "/fpCk-c",
-				},
-				{
-					CorrelationID: "2",
-					ShortURL:      baseURL + "/FgAJzm",
-				},
-			},
-			wantErr: false,
+			CorrelationID: "1",
+			OriginalURL:   "https://ya.ru",
 		},
 		{
-			name: "save batch failed",
-			batch: []models.BatchRequest{
-				{
-					CorrelationID: "1",
-					OriginalURL:   "https://ya.ru",
-				},
-				{
-					CorrelationID: "2",
-					OriginalURL:   "https://yandex.ru",
+			CorrelationID: "2",
+			OriginalURL:   "https://yandex.ru",
+		},
+	}
+
+	type want struct {
+		resp []models.BatchResponse
+		err  bool
+	}
+
+	tests := []struct {
+		name     string
+		batchReq []models.BatchRequest
+		prepare  func(s *mocks.MockRepository)
+		want     want
+	}{
+		{
+			name:     "should save batch successfully",
+			batchReq: batch,
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(errors.New("no url")).AnyTimes()
+				s.EXPECT().
+					SaveURLBatch(gomock.Any(), gomock.Any()).
+					Return(nil)
+			},
+			want: want{
+				resp: []models.BatchResponse{
+					{
+						CorrelationID: "1",
+						ShortURL:      baseURL + "/fpCk-c",
+					},
+					{
+						CorrelationID: "2",
+						ShortURL:      baseURL + "/FgAJzm",
+					},
 				},
 			},
-			want:    nil,
-			wantErr: true,
+		},
+		{
+			name:     "should fail while saving batch",
+			batchReq: batch,
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(errors.New("no url")).AnyTimes()
+				s.EXPECT().
+					SaveURLBatch(gomock.Any(), gomock.Any()).
+					Return(errors.New("cannot save batch urls"))
+			},
+			want: want{
+				err: true,
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.wantErr {
-				s.EXPECT().
-					SaveURLBatch(ctx, gomock.Any()).
-					Return(errors.New("cannot save batch urls"))
-			} else {
-				s.EXPECT().
-					SaveURLBatch(ctx, gomock.Any()).
-					Return(nil)
-			}
+			ctrl := gomock.NewController(t)
+			storage := mocks.NewMockRepository(ctrl)
+			ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
 
-			resp, err := srv.SaveBatch(ctx, tt.batch)
+			tt.prepare(storage)
+			service.Storage = storage
 
-			if tt.wantErr {
+			resp, err := service.SaveBatch(ctx, tt.batchReq)
+
+			if tt.want.err {
 				assert.NotEmpty(t, err)
 				return
 			}
 
 			if assert.NoError(t, err) {
-				assert.Equal(t, tt.want, resp)
+				assert.Equal(t, tt.want.resp, resp)
 			}
 		})
 	}

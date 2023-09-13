@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 	"strings"
 	"time"
 
@@ -28,7 +29,7 @@ func NewSQLStorage(db *sql.DB, logger *logger.Logger) storage.Repository {
 	return s
 }
 
-func (s *SQLStorage) SaveURL(ctx context.Context, url storage.URLRecord) error {
+func (s *SQLStorage) SaveURL(ctx context.Context, url entity.URLRecord) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 
@@ -44,7 +45,7 @@ func (s *SQLStorage) SaveURL(ctx context.Context, url storage.URLRecord) error {
 	return nil
 }
 
-func (s *SQLStorage) SaveURLBatch(ctx context.Context, urls []*storage.URLRecord) error {
+func (s *SQLStorage) SaveURLBatch(ctx context.Context, urls []*entity.URLRecord) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 
@@ -102,7 +103,7 @@ func (s *SQLStorage) GetURL(ctx context.Context, shortURL string) (string, error
 	return originalURL, nil
 }
 
-func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]storage.URLRecord, error) {
+func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]entity.URLRecord, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 
@@ -117,9 +118,9 @@ func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]stor
 	}
 	defer rows.Close()
 
-	var records []storage.URLRecord
+	var records []entity.URLRecord
 	for rows.Next() {
-		var r storage.URLRecord
+		var r entity.URLRecord
 		if err := rows.Scan(&r.UUID, &r.UserID, &r.ShortURL, &r.OriginalURL); err != nil {
 			return nil, err
 		}
