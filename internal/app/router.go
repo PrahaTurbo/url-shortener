@@ -1,9 +1,10 @@
 package app
 
 import (
-	appmiddleware "github.com/PrahaTurbo/url-shortener/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	libmiddleware "github.com/go-chi/chi/v5/middleware"
+
+	appmiddleware "github.com/PrahaTurbo/url-shortener/internal/middleware"
 )
 
 func (a *application) Router() chi.Router {

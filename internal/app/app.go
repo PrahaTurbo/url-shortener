@@ -1,9 +1,10 @@
 package app
 
 import (
+	"github.com/go-chi/chi/v5"
+
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
-	"github.com/go-chi/chi/v5"
 )
 
 type App interface {

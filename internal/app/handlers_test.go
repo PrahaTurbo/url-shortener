@@ -4,19 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/PrahaTurbo/url-shortener/config"
-	"github.com/PrahaTurbo/url-shortener/internal/logger"
-	"github.com/PrahaTurbo/url-shortener/internal/storage"
-	"github.com/PrahaTurbo/url-shortener/internal/storage/mock"
-	"go.uber.org/mock/gomock"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/PrahaTurbo/url-shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
+
+	"github.com/PrahaTurbo/url-shortener/config"
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/service"
+	"github.com/PrahaTurbo/url-shortener/internal/storage"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/mock"
 )
 
 var (
@@ -25,9 +26,8 @@ var (
 )
 
 func setupTestApp(mockStorage *mock.MockRepository) application {
-	srv := service.NewService(baseURL, mockStorage)
-
 	log, _ := logger.Initialize("debug")
+	srv := service.NewService(baseURL, mockStorage, log)
 
 	return application{
 		addr:      addr,

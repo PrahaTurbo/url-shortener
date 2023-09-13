@@ -1,11 +1,12 @@
 package provider
 
 import (
+	"log"
+
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/memory"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/pg"
-	"log"
 )
 
 func NewStorage(dsn string, filePath string, logger *logger.Logger) (storage.Repository, error) {

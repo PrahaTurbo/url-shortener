@@ -3,10 +3,14 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
+
+	"github.com/google/uuid"
+	"go.uber.org/zap"
+
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
-	"github.com/google/uuid"
-	"time"
 )
 
 var ErrAlready = errors.New("URL already in storage")
@@ -18,14 +22,16 @@ type urlDeletionTask struct {
 
 type Service struct {
 	Storage   storage.Repository
+	logger    *logger.Logger
 	baseURL   string
 	delChan   chan urlDeletionTask
 	semaphore *semaphore
 }
 
-func NewService(baseURL string, storage storage.Repository) Service {
+func NewService(baseURL string, storage storage.Repository, logger *logger.Logger) Service {
 	s := Service{
 		Storage:   storage,
+		logger:    logger,
 		baseURL:   baseURL,
 		delChan:   make(chan urlDeletionTask, 10),
 		semaphore: newSemaphore(5),
@@ -48,7 +54,7 @@ func (s *Service) SaveURL(ctx context.Context, originalURL string) (string, erro
 		return formURL(s.baseURL, shortURL), ErrAlready
 	}
 
-	r := &storage.URLRecord{
+	r := storage.URLRecord{
 		UUID:        uuid.New().String(),
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
@@ -184,7 +190,10 @@ func (s *Service) handleDeletion(tasks []urlDeletionTask) {
 		go func(urls []string, user string) {
 			defer s.semaphore.release()
 
-			s.Storage.DeleteURLBatch(urls, user)
+			if err := s.Storage.DeleteURLBatch(urls, user); err != nil {
+				s.logger.Error("cannot delete batch urls", zap.Error(err), zap.String("user id", user))
+			}
+
 		}(task.urls, task.userID)
 	}
 }

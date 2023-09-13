@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/PrahaTurbo/url-shortener/internal/logger"
-	"github.com/PrahaTurbo/url-shortener/internal/storage"
-	"go.uber.org/zap"
 	"strings"
 	"time"
+
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/storage"
 )
 
 var ErrURLDeleted = errors.New("url was deleted")
@@ -28,7 +28,7 @@ func NewSQLStorage(db *sql.DB, logger *logger.Logger) storage.Repository {
 	return s
 }
 
-func (s *SQLStorage) SaveURL(ctx context.Context, url *storage.URLRecord) error {
+func (s *SQLStorage) SaveURL(ctx context.Context, url storage.URLRecord) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 
@@ -102,7 +102,7 @@ func (s *SQLStorage) GetURL(ctx context.Context, shortURL string) (string, error
 	return originalURL, nil
 }
 
-func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]*storage.URLRecord, error) {
+func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]storage.URLRecord, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 
@@ -117,14 +117,14 @@ func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]*sto
 	}
 	defer rows.Close()
 
-	var records []*storage.URLRecord
+	var records []storage.URLRecord
 	for rows.Next() {
 		var r storage.URLRecord
 		if err := rows.Scan(&r.UUID, &r.UserID, &r.ShortURL, &r.OriginalURL); err != nil {
 			return nil, err
 		}
 
-		records = append(records, &r)
+		records = append(records, r)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -161,7 +161,7 @@ func (s *SQLStorage) CheckExistence(ctx context.Context, shortURL, userID string
 	return nil
 }
 
-func (s *SQLStorage) DeleteURLBatch(urls []string, user string) {
+func (s *SQLStorage) DeleteURLBatch(urls []string, user string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
@@ -174,8 +174,10 @@ func (s *SQLStorage) DeleteURLBatch(urls []string, user string) {
 
 	_, err := s.db.ExecContext(ctx, query, urlsString, user)
 	if err != nil {
-		s.logger.Error("cannot delete batch urls", zap.Error(err))
+		return err
 	}
+
+	return nil
 }
 
 func (s *SQLStorage) Ping() error {

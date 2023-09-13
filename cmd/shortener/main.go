@@ -1,16 +1,17 @@
 package main
 
 import (
-	"github.com/PrahaTurbo/url-shortener/internal/logger"
-	"github.com/PrahaTurbo/url-shortener/internal/service"
-	"github.com/PrahaTurbo/url-shortener/internal/storage/provider"
-	"go.uber.org/zap"
 	"log"
 	"net/http"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
+
 	cfg "github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/app"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/service"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/provider"
 )
 
 func main() {
@@ -25,7 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	srv := service.NewService(c.BaseURL, store)
+	srv := service.NewService(c.BaseURL, store, lgr)
 	application := app.NewApp(c.Addr, c.JWTSecret, srv, lgr)
 
 	lgr.Info("Server is running", zap.String("address", application.Addr()))

@@ -2,14 +2,15 @@ package app
 
 import (
 	"encoding/json"
-	"github.com/PrahaTurbo/url-shortener/internal/models"
-	"github.com/PrahaTurbo/url-shortener/internal/service"
-	"github.com/PrahaTurbo/url-shortener/internal/storage/pg"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
+
+	"github.com/PrahaTurbo/url-shortener/internal/models"
+	"github.com/PrahaTurbo/url-shortener/internal/service"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/pg"
 )
 
 func (a *application) makeURLHandler(w http.ResponseWriter, r *http.Request) {

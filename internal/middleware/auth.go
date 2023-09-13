@@ -3,10 +3,12 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"github.com/PrahaTurbo/url-shortener/config"
+	"net/http"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"net/http"
+
+	"github.com/PrahaTurbo/url-shortener/config"
 )
 
 const jwtTokenCookieName string = "token"
@@ -19,17 +21,14 @@ type Claims struct {
 func Auth(jwtSecret string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var cookie *http.Cookie
-
 			cookie, err := r.Cookie(jwtTokenCookieName)
 			if err != nil {
-				newCookie, err := createJWTAuthCookie(jwtSecret)
+				cookie, err = createJWTAuthCookie(jwtSecret)
 				if err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
 
-				cookie = newCookie
 				http.SetCookie(w, cookie)
 			}
 

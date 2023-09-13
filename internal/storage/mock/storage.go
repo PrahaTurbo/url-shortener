@@ -8,8 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	storage "github.com/PrahaTurbo/url-shortener/internal/storage"
 	gomock "go.uber.org/mock/gomock"
+
+	storage "github.com/PrahaTurbo/url-shortener/internal/storage"
 )
 
 // MockRepository is a mock of Repository interface.
@@ -50,9 +51,11 @@ func (mr *MockRepositoryMockRecorder) CheckExistence(ctx, shortURL, userID inter
 }
 
 // DeleteURLBatch mocks base method.
-func (m *MockRepository) DeleteURLBatch(urls []string, user string) {
+func (m *MockRepository) DeleteURLBatch(urls []string, user string) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "DeleteURLBatch", urls, user)
+	ret := m.ctrl.Call(m, "DeleteURLBatch", urls, user)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // DeleteURLBatch indicates an expected call of DeleteURLBatch.
@@ -77,10 +80,10 @@ func (mr *MockRepositoryMockRecorder) GetURL(ctx, shortURL interface{}) *gomock.
 }
 
 // GetURLsByUserID mocks base method.
-func (m *MockRepository) GetURLsByUserID(ctx context.Context, userID string) ([]*storage.URLRecord, error) {
+func (m *MockRepository) GetURLsByUserID(ctx context.Context, userID string) ([]storage.URLRecord, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetURLsByUserID", ctx, userID)
-	ret0, _ := ret[0].([]*storage.URLRecord)
+	ret0, _ := ret[0].([]storage.URLRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -106,7 +109,7 @@ func (mr *MockRepositoryMockRecorder) Ping() *gomock.Call {
 }
 
 // SaveURL mocks base method.
-func (m *MockRepository) SaveURL(ctx context.Context, url *storage.URLRecord) error {
+func (m *MockRepository) SaveURL(ctx context.Context, url storage.URLRecord) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveURL", ctx, url)
 	ret0, _ := ret[0].(error)

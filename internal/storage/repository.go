@@ -5,12 +5,12 @@ import (
 )
 
 type Repository interface {
-	SaveURL(ctx context.Context, url *URLRecord) error
+	SaveURL(ctx context.Context, url URLRecord) error
 	SaveURLBatch(ctx context.Context, urls []*URLRecord) error
 	GetURL(ctx context.Context, shortURL string) (string, error)
-	GetURLsByUserID(ctx context.Context, userID string) ([]*URLRecord, error)
+	GetURLsByUserID(ctx context.Context, userID string) ([]URLRecord, error)
 	CheckExistence(ctx context.Context, shortURL, userID string) error
-	DeleteURLBatch(urls []string, user string)
+	DeleteURLBatch(urls []string, user string) error
 	Ping() error
 }
 

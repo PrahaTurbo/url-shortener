@@ -5,16 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/PrahaTurbo/url-shortener/internal/logger"
-	"github.com/PrahaTurbo/url-shortener/internal/storage"
-	"go.uber.org/zap"
 	"os"
 	"sync"
+
+	"go.uber.org/zap"
+
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/storage"
 )
 
 type InMemStorage struct {
 	urls            map[string]string
-	users           map[string][]*storage.URLRecord
+	users           map[string][]storage.URLRecord
 	storageFilePath string
 	logger          *logger.Logger
 	mu              sync.Mutex
@@ -23,7 +25,7 @@ type InMemStorage struct {
 func NewInMemStorage(filePath string, logger *logger.Logger) storage.Repository {
 	s := &InMemStorage{
 		urls:            make(map[string]string),
-		users:           make(map[string][]*storage.URLRecord),
+		users:           make(map[string][]storage.URLRecord),
 		storageFilePath: filePath,
 		logger:          logger,
 	}
@@ -35,7 +37,7 @@ func NewInMemStorage(filePath string, logger *logger.Logger) storage.Repository 
 	return s
 }
 
-func (s *InMemStorage) SaveURL(_ context.Context, r *storage.URLRecord) error {
+func (s *InMemStorage) SaveURL(_ context.Context, r storage.URLRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -51,7 +53,7 @@ func (s *InMemStorage) SaveURL(_ context.Context, r *storage.URLRecord) error {
 
 func (s *InMemStorage) SaveURLBatch(ctx context.Context, urls []*storage.URLRecord) error {
 	for _, r := range urls {
-		if err := s.SaveURL(ctx, r); err != nil {
+		if err := s.SaveURL(ctx, *r); err != nil {
 			return err
 		}
 	}
@@ -71,7 +73,7 @@ func (s *InMemStorage) GetURL(_ context.Context, shortURL string) (string, error
 	return originalURL, nil
 }
 
-func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]*storage.URLRecord, error) {
+func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]storage.URLRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -83,14 +85,13 @@ func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]*sto
 	return records, nil
 }
 
-func (s *InMemStorage) DeleteURLBatch(urls []string, user string) {
+func (s *InMemStorage) DeleteURLBatch(urls []string, user string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	records, ok := s.users[user]
 	if !ok {
-		s.logger.Error("cannot delete batch urls: user not found")
-		return
+		return errors.New("user not found")
 	}
 
 	for _, url := range urls {
@@ -100,6 +101,8 @@ func (s *InMemStorage) DeleteURLBatch(urls []string, user string) {
 			}
 		}
 	}
+
+	return nil
 }
 
 func (s *InMemStorage) CheckExistence(_ context.Context, shortURL, userID string) error {
@@ -142,13 +145,13 @@ func (s *InMemStorage) restoreFromFile() error {
 		}
 
 		s.urls[r.ShortURL] = r.OriginalURL
-		s.users[r.UserID] = append(s.users[r.UserID], &r)
+		s.users[r.UserID] = append(s.users[r.UserID], r)
 	}
 
 	return nil
 }
 
-func (s *InMemStorage) writeRecordToFile(r *storage.URLRecord) error {
+func (s *InMemStorage) writeRecordToFile(r storage.URLRecord) error {
 	if s.storageFilePath == "" {
 		return nil
 	}
