@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/PrahaTurbo/url-shortener/config"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/middleware"
 	"github.com/PrahaTurbo/url-shortener/internal/mocks"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 )
@@ -77,7 +77,7 @@ func TestService_SaveURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			storage := mocks.NewMockRepository(ctrl)
-			ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
+			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
 
 			tt.prepare(storage)
 			service.Storage = storage
@@ -139,7 +139,7 @@ func TestService_GetURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			storage := mocks.NewMockRepository(ctrl)
-			ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
+			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
 
 			tt.prepare(storage)
 			service.Storage = storage
@@ -227,7 +227,7 @@ func TestService_SaveBatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			storage := mocks.NewMockRepository(ctrl)
-			ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
+			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
 
 			tt.prepare(storage)
 			service.Storage = storage
@@ -250,7 +250,7 @@ func BenchmarkService_SaveBatch(b *testing.B) {
 	service := setupService()
 	ctrl := gomock.NewController(b)
 	storage := mocks.NewMockRepository(ctrl)
-	ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
+	ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
 
 	storage.EXPECT().
 		CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -280,7 +280,7 @@ func BenchmarkService_DeleteURLs(b *testing.B) {
 	ctrl := gomock.NewController(b)
 	storage := mocks.NewMockRepository(ctrl)
 	log, _ := logger.Initialize("debug")
-	ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
+	ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
 
 	storage.EXPECT().
 		DeleteURLBatch(gomock.Any(), gomock.Any()).

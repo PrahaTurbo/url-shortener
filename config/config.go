@@ -5,10 +5,6 @@ import (
 	"os"
 )
 
-type UserIDKeyType string
-
-const UserIDKey UserIDKeyType = "userID"
-
 type Config struct {
 	Addr            string
 	BaseURL         string

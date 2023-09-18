@@ -1,9 +1,12 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/PrahaTurbo/url-shortener/internal/middleware"
 )
 
 func TestService_generateShortURL(t *testing.T) {
@@ -43,5 +46,49 @@ func BenchmarkService_generateShortURL(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		generateShortURL(originalURL)
+	}
+}
+
+func Test_extractUserIDFromCtx(t *testing.T) {
+	type badContextKey string
+	var badKey badContextKey = "jwt_token"
+
+	tests := []struct {
+		name    string
+		ctx     context.Context
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "should return valid user ID",
+			ctx:  context.WithValue(context.Background(), middleware.UserIDKey, "1"),
+			want: "1",
+		},
+		{
+			name:    "should return error if invalid user ID ",
+			ctx:     context.WithValue(context.Background(), middleware.UserIDKey, 123),
+			wantErr: true,
+		},
+		{
+			name:    "should return error if invalid key",
+			ctx:     context.WithValue(context.Background(), badKey, "1"),
+			wantErr: true,
+		},
+		{
+			name:    "should return error if missing user ID value",
+			ctx:     context.Background(),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := extractUserIDFromCtx(tt.ctx)
+
+			if tt.wantErr {
+				assert.NotEmpty(t, err)
+			}
+
+			assert.Equal(t, tt.want, got)
+		})
 	}
 }

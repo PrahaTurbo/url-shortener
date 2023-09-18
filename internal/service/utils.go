@@ -6,11 +6,11 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/PrahaTurbo/url-shortener/config"
+	"github.com/PrahaTurbo/url-shortener/internal/middleware"
 )
 
 func extractUserIDFromCtx(ctx context.Context) (string, error) {
-	userIDVal := ctx.Value(config.UserIDKey)
+	userIDVal := ctx.Value(middleware.UserIDKey)
 	userID, ok := userIDVal.(string)
 	if !ok {
 		return "", fmt.Errorf("cannot extract userID from context")

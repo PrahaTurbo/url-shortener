@@ -17,6 +17,7 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/mocks"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/pg"
 )
 
 var (
@@ -90,6 +91,20 @@ func Test_application_makeURL(t *testing.T) {
 				statusCode:  http.StatusBadRequest,
 			},
 		},
+		{
+			name:        "should return internal server error",
+			request:     "/",
+			requestBody: "https://ya.ru",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					SaveURL(gomock.Any(), "https://ya.ru").
+					Return("", errors.New("internal error"))
+			},
+			want: want{
+				contentType: "text/plain",
+				statusCode:  http.StatusInternalServerError,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -155,6 +170,19 @@ func Test_application_getOrigin(t *testing.T) {
 			want: want{
 				location:   "",
 				statusCode: http.StatusBadRequest,
+			},
+		},
+		{
+			name:    "should return 410 if urls was deleted",
+			request: "/fpCk-c",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					GetURL(gomock.Any(), "fpCk-c").
+					Return("", pg.ErrURLDeleted)
+			},
+			want: want{
+				location:   "",
+				statusCode: http.StatusGone,
 			},
 		},
 	}
@@ -236,6 +264,19 @@ func Test_application_jsonHandler(t *testing.T) {
 			prepare:     func(s *mocks.MockService) {},
 			want: want{
 				statusCode: http.StatusBadRequest,
+			},
+		},
+		{
+			name:        "should return internal server error",
+			request:     "/api/shorten",
+			requestBody: `{"url": "https://ya.ru"}`,
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					SaveURL(gomock.Any(), "https://ya.ru").
+					Return("", errors.New("internal error"))
+			},
+			want: want{
+				statusCode: http.StatusInternalServerError,
 			},
 		},
 	}
@@ -389,6 +430,127 @@ func Test_application_batchHandler(t *testing.T) {
 			if tt.want.response != "" {
 				assert.JSONEq(t, tt.want.response, w.Body.String())
 			}
+		})
+	}
+}
+
+func Test_application_getUserURLsHandler(t *testing.T) {
+	app := setupTestApp()
+
+	type want struct {
+		statusCode  int
+		contentType string
+	}
+
+	tests := []struct {
+		name    string
+		request string
+		prepare func(s *mocks.MockService)
+		want    want
+	}{
+		{
+			name:    "should return user urls successfully",
+			request: "/api/user/urls",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					GetURLsByUserID(gomock.Any()).
+					Return([]models.UserURLsResponse{
+						{
+							ShortURL:    baseURL + "/123",
+							OriginalURL: "ya.ru",
+						},
+					}, nil)
+			},
+			want: want{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+			},
+		},
+		{
+			name:    "should return 204 if user doesn't have urls",
+			request: "/api/user/urls",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					GetURLsByUserID(gomock.Any()).
+					Return(nil, errors.New("no urls"))
+			},
+			want: want{
+				statusCode: http.StatusNoContent,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			service := mocks.NewMockService(ctrl)
+
+			tt.prepare(service)
+			app.srv = service
+
+			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
+
+			w := httptest.NewRecorder()
+			app.getUserURLsHandler(w, request)
+
+			assert.Equal(t, tt.want.statusCode, w.Code)
+			assert.Equal(t, tt.want.contentType, w.Header().Get("Content-type"))
+		})
+	}
+}
+
+func Test_application_deleteURLsHandler(t *testing.T) {
+	app := setupTestApp()
+
+	type want struct {
+		statusCode int
+	}
+
+	tests := []struct {
+		name        string
+		request     string
+		requestBody string
+		prepare     func(s *mocks.MockService)
+		want        want
+	}{
+		{
+			name:        "should delete user urls successfully",
+			request:     "/api/user/urls",
+			requestBody: `["6qxTVvsy", "RTfd56hn", "Jlfd67ds"]`,
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					DeleteURLs(gomock.Any(), []string{"6qxTVvsy", "RTfd56hn", "Jlfd67ds"}).
+					Return(nil)
+			},
+			want: want{
+				statusCode: http.StatusAccepted,
+			},
+		},
+		{
+			name:    "should return error if cannot unmarshal",
+			request: "/api/user/urls",
+			prepare: func(s *mocks.MockService) {},
+			want: want{
+				statusCode: http.StatusInternalServerError,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			service := mocks.NewMockService(ctrl)
+
+			tt.prepare(service)
+			app.srv = service
+
+			reader := strings.NewReader(tt.requestBody)
+			request := httptest.NewRequest(http.MethodDelete, tt.request, reader)
+
+			w := httptest.NewRecorder()
+			app.deleteURLsHandler(w, request)
+
+			assert.Equal(t, tt.want.statusCode, w.Code)
 		})
 	}
 }

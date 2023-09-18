@@ -7,10 +7,11 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-
-	"github.com/PrahaTurbo/url-shortener/config"
 )
 
+type UserIDKeyType string
+
+const UserIDKey UserIDKeyType = "userID"
 const jwtTokenCookieName string = "token"
 
 type Claims struct {
@@ -63,7 +64,7 @@ func Auth(jwtSecret string) func(next http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), config.UserIDKey, claims.UserID)
+			ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

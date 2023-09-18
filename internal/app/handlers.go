@@ -46,7 +46,7 @@ func (a *application) jsonHandler(w http.ResponseWriter, r *http.Request) {
 	var req models.Request
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		a.logger.Debug("cannot unmarshal response", zap.Error(err))
+		a.logger.Debug("cannot unmarshal request", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -76,6 +76,7 @@ func (a *application) jsonHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		a.logger.Debug("error encoding response", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	a.logger.Debug("sending HTTP 201 response")
@@ -111,7 +112,7 @@ func (a *application) batchHandler(w http.ResponseWriter, r *http.Request) {
 	var req []models.BatchRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		a.logger.Debug("cannot unmarshal response", zap.Error(err))
+		a.logger.Debug("cannot unmarshal request", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -127,6 +128,7 @@ func (a *application) batchHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		a.logger.Debug("error encoding response", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -144,6 +146,7 @@ func (a *application) getUserURLsHandler(w http.ResponseWriter, r *http.Request)
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		a.logger.Debug("error encoding response", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -154,7 +157,7 @@ func (a *application) deleteURLsHandler(w http.ResponseWriter, r *http.Request) 
 	var shortURLs []string
 
 	if err := json.NewDecoder(r.Body).Decode(&shortURLs); err != nil {
-		a.logger.Debug("cannot unmarshal response", zap.Error(err))
+		a.logger.Debug("cannot decode request", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
