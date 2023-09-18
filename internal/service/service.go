@@ -16,6 +16,7 @@ import (
 
 var ErrAlready = errors.New("URL already in storage")
 
+// Service is an interface for API that handle URL shortening and associated operations.
 type Service interface {
 	SaveURL(ctx context.Context, originalURL string) (string, error)
 	SaveBatch(ctx context.Context, batch []models.BatchRequest) ([]models.BatchResponse, error)

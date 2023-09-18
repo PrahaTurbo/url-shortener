@@ -7,6 +7,8 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/service"
 )
 
+// App is an interface representing the web server of the application, which handles requests and responses.
+// It provides public methods to access the server's address and router configuration.
 type App interface {
 	Addr() string
 	Router() chi.Router

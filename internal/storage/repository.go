@@ -6,6 +6,7 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
 
+// Repository is an interface that defines operations to interact with the storage system.
 type Repository interface {
 	SaveURL(ctx context.Context, url entity.URLRecord) error
 	SaveURLBatch(ctx context.Context, urls []*entity.URLRecord) error

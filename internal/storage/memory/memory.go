@@ -15,6 +15,7 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
 
+// InMemStorage maintains an in-memory representation of URL shortening data.
 type InMemStorage struct {
 	urls            map[string]string
 	users           map[string][]entity.URLRecord

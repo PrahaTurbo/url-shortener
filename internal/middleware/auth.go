@@ -19,6 +19,11 @@ type Claims struct {
 	UserID string
 }
 
+// Auth is a middleware for JWT authentication.
+// The middleware checks if JWT Token is present in a cookie and valid.
+// If the cookie is not present or JWT Token is not valid, a new cookie with JWT Token is created.
+//
+// The middleware sets the user id (from the JWT claims) in the request context.
 func Auth(jwtSecret string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

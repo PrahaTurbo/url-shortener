@@ -15,6 +15,7 @@ import (
 
 var ErrURLDeleted = errors.New("url was deleted")
 
+// SQLStorage is a struct that implements the storage.Repository interface, using Postgresql as a storage backend.
 type SQLStorage struct {
 	db     *sql.DB
 	logger *logger.Logger
