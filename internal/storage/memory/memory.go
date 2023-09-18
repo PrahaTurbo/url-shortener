@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 	"os"
 	"sync"
 
@@ -13,6 +12,7 @@ import (
 
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
 
 type InMemStorage struct {

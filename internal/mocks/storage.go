@@ -8,8 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	entity "github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 	gomock "go.uber.org/mock/gomock"
+
+	entity "github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
 
 // MockRepository is a mock of Repository interface.

@@ -8,8 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	models "github.com/PrahaTurbo/url-shortener/internal/models"
 	gomock "go.uber.org/mock/gomock"
+
+	models "github.com/PrahaTurbo/url-shortener/internal/models"
 )
 
 // MockService is a mock of Service interface.

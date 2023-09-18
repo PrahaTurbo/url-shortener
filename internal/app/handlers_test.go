@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/PrahaTurbo/url-shortener/internal/mocks"
-	"github.com/PrahaTurbo/url-shortener/internal/models"
-	"github.com/PrahaTurbo/url-shortener/internal/service"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,6 +14,9 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/mocks"
+	"github.com/PrahaTurbo/url-shortener/internal/models"
+	"github.com/PrahaTurbo/url-shortener/internal/service"
 )
 
 var (

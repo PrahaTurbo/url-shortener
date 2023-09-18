@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 	"strings"
 	"time"
 
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
 
 var ErrURLDeleted = errors.New("url was deleted")

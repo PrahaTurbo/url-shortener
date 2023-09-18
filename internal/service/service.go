@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +11,7 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
 
 var ErrAlready = errors.New("URL already in storage")

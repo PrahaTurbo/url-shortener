@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"github.com/PrahaTurbo/url-shortener/internal/logger"
-	"github.com/PrahaTurbo/url-shortener/internal/mocks"
 	"strings"
 	"testing"
 
@@ -13,6 +11,8 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/PrahaTurbo/url-shortener/config"
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/mocks"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 )
 
