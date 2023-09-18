@@ -14,6 +14,7 @@ func (a *application) Router() chi.Router {
 	r.Use(appmiddleware.Auth(a.jwtSecret))
 	r.Use(libmiddleware.Compress(5, "application/json", "text/html"))
 	r.Use(appmiddleware.Decompress)
+	r.Mount("/debug", libmiddleware.Profiler())
 
 	r.Post("/", a.makeURLHandler)
 	r.Get("/{id}", a.getOriginHandler)

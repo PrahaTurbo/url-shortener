@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/mocks"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -242,5 +243,56 @@ func TestService_SaveBatch(t *testing.T) {
 				assert.Equal(t, tt.want.resp, resp)
 			}
 		})
+	}
+}
+
+func BenchmarkService_SaveBatch(b *testing.B) {
+	service := setupService()
+	ctrl := gomock.NewController(b)
+	storage := mocks.NewMockRepository(ctrl)
+	ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
+
+	storage.EXPECT().
+		CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).AnyTimes()
+	storage.EXPECT().
+		SaveURLBatch(gomock.Any(), gomock.Any()).
+		Return(nil).AnyTimes()
+
+	service.Storage = storage
+
+	var batchReqs []models.BatchRequest
+	for i := 0; i < len(batchReqs); i++ {
+		batchReqs = append(batchReqs, models.BatchRequest{
+			CorrelationID: "12344567",
+			OriginalURL:   "yandex.ru",
+		})
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		service.SaveBatch(ctx, batchReqs)
+	}
+}
+
+func BenchmarkService_DeleteURLs(b *testing.B) {
+	ctrl := gomock.NewController(b)
+	storage := mocks.NewMockRepository(ctrl)
+	log, _ := logger.Initialize("debug")
+	ctx := context.WithValue(context.Background(), config.UserIDKey, "1")
+
+	storage.EXPECT().
+		DeleteURLBatch(gomock.Any(), gomock.Any()).
+		Return(nil).AnyTimes()
+
+	service := NewService(baseURL, storage, log)
+
+	urls := []string{strings.Repeat("yandex.ru", 1000)}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		service.DeleteURLs(ctx, urls)
 	}
 }
