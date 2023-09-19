@@ -25,10 +25,10 @@ var (
 	addr    = "localhost:8080"
 )
 
-func setupTestApp() application {
+func setupTestApp() Application {
 	log, _ := logger.Initialize("debug")
 
-	return application{
+	return Application{
 		addr:      addr,
 		logger:    log,
 		jwtSecret: "secret_key",
@@ -118,7 +118,7 @@ func Test_application_makeURL(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
 			w := httptest.NewRecorder()
-			app.makeURLHandler(w, request)
+			app.MakeURLHandler(w, request)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 
@@ -201,7 +201,7 @@ func Test_application_getOrigin(t *testing.T) {
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiCtx))
 			chiCtx.URLParams.Add("id", tt.request[1:])
 
-			app.getOriginHandler(w, r)
+			app.GetOriginHandler(w, r)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 
@@ -293,7 +293,7 @@ func Test_application_jsonHandler(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
 			w := httptest.NewRecorder()
-			app.jsonHandler(w, request)
+			app.JSONHandler(w, request)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 
@@ -343,7 +343,7 @@ func Test_application_pingHandler(t *testing.T) {
 			r := httptest.NewRequest(http.MethodGet, "/ping", nil)
 			w := httptest.NewRecorder()
 
-			app.pingHandler(w, r)
+			app.PingHandler(w, r)
 
 			assert.Equal(t, tt.statusCode, w.Code)
 		})
@@ -423,7 +423,7 @@ func Test_application_batchHandler(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
 			w := httptest.NewRecorder()
-			app.batchHandler(w, request)
+			app.BatchHandler(w, request)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 
@@ -491,7 +491,7 @@ func Test_application_getUserURLsHandler(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
 
 			w := httptest.NewRecorder()
-			app.getUserURLsHandler(w, request)
+			app.GetUserURLsHandler(w, request)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 			assert.Equal(t, tt.want.contentType, w.Header().Get("Content-type"))
@@ -548,7 +548,7 @@ func Test_application_deleteURLsHandler(t *testing.T) {
 			request := httptest.NewRequest(http.MethodDelete, tt.request, reader)
 
 			w := httptest.NewRecorder()
-			app.deleteURLsHandler(w, request)
+			app.DeleteURLsHandler(w, request)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 		})

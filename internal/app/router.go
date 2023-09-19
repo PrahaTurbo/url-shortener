@@ -7,7 +7,7 @@ import (
 	appmiddleware "github.com/PrahaTurbo/url-shortener/internal/middleware"
 )
 
-func (a *application) Router() chi.Router {
+func (a *Application) Router() chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(a.logger.RequestLogger)
@@ -16,13 +16,13 @@ func (a *application) Router() chi.Router {
 	r.Use(appmiddleware.Decompress)
 	r.Mount("/debug", libmiddleware.Profiler())
 
-	r.Post("/", a.makeURLHandler)
-	r.Get("/{id}", a.getOriginHandler)
-	r.Post("/api/shorten", a.jsonHandler)
-	r.Post("/api/shorten/batch", a.batchHandler)
-	r.Get("/api/user/urls", a.getUserURLsHandler)
-	r.Delete("/api/user/urls", a.deleteURLsHandler)
-	r.Get("/ping", a.pingHandler)
+	r.Post("/", a.MakeURLHandler)
+	r.Get("/{id}", a.GetOriginHandler)
+	r.Post("/api/shorten", a.JSONHandler)
+	r.Post("/api/shorten/batch", a.BatchHandler)
+	r.Get("/api/user/urls", a.GetUserURLsHandler)
+	r.Delete("/api/user/urls", a.DeleteURLsHandler)
+	r.Get("/ping", a.PingHandler)
 
 	return r
 }

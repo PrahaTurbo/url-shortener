@@ -10,11 +10,11 @@ import (
 // App is an interface representing the web server of the application, which handles requests and responses.
 // It provides public methods to access the server's address and router configuration.
 type App interface {
-	Addr() string
 	Router() chi.Router
+	Addr() string
 }
 
-type application struct {
+type Application struct {
 	addr      string
 	srv       service.Service
 	logger    *logger.Logger
@@ -22,7 +22,7 @@ type application struct {
 }
 
 func NewApp(addr, jwtSecret string, srv service.Service, logger *logger.Logger) App {
-	return &application{
+	return &Application{
 		addr:      addr,
 		srv:       srv,
 		logger:    logger,
@@ -30,6 +30,6 @@ func NewApp(addr, jwtSecret string, srv service.Service, logger *logger.Logger) 
 	}
 }
 
-func (a *application) Addr() string {
+func (a *Application) Addr() string {
 	return a.addr
 }
