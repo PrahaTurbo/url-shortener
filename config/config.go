@@ -5,15 +5,17 @@ import (
 	"os"
 )
 
+// Config represents the configuration of the application.
 type Config struct {
-	Addr            string
-	BaseURL         string
-	LogLevel        string
-	StorageFilePath string
-	DatabaseDSN     string
-	JWTSecret       string
+	Addr            string // The server address, in the form host:port.
+	BaseURL         string // The base URL to which the server responds.
+	LogLevel        string // The level of logs that should be displayed. Options include "info", "error", and "debug".
+	StorageFilePath string // The path to the file where the server will store short URL data.
+	DatabaseDSN     string // The SQL database DSN (Data Source Name) to connect to the database.
+	JWTSecret       string // The secret key used in JWT for authentication.
 }
 
+// Load reads command-line flags and environment variables to populate a Config object.
 func Load() Config {
 	var c Config
 

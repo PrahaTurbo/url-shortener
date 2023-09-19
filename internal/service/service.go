@@ -14,6 +14,7 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
 
+// ErrAlready is an error that is thrown when a URL is already present in the storage.
 var ErrAlready = errors.New("URL already in storage")
 
 // Service is an interface for API that handle URL shortening and associated operations.
@@ -34,6 +35,7 @@ type service struct {
 	semaphore *semaphore
 }
 
+// NewService creates a new instance of the URL service with specified configurations.
 func NewService(baseURL string, storage storage.Repository, logger *logger.Logger) Service {
 	s := &service{
 		Storage:   storage,
@@ -48,6 +50,7 @@ func NewService(baseURL string, storage storage.Repository, logger *logger.Logge
 	return s
 }
 
+// SaveURL saves an original URL, provides a shortened version, and returns it.
 func (s *service) SaveURL(ctx context.Context, originalURL string) (string, error) {
 	shortURL := generateShortURL(originalURL)
 
@@ -74,6 +77,7 @@ func (s *service) SaveURL(ctx context.Context, originalURL string) (string, erro
 	return formURL(s.baseURL, shortURL), nil
 }
 
+// SaveBatch handles the saving of multiple URLs at once, returning an array of responses.
 func (s *service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([]models.BatchResponse, error) {
 	records := make([]*entity.URLRecord, 0, len(batch))
 	response := make([]models.BatchResponse, 0, len(batch))
@@ -116,6 +120,8 @@ func (s *service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([
 	return response, nil
 }
 
+// GetURL retrieves the original URL given the shortened one.
+// If the shortened URL is not registered in the service, the error will be returned.
 func (s *service) GetURL(ctx context.Context, shortURL string) (string, error) {
 	originalURL, err := s.Storage.GetURL(ctx, shortURL)
 	if err != nil || originalURL == "" {
@@ -125,6 +131,7 @@ func (s *service) GetURL(ctx context.Context, shortURL string) (string, error) {
 	return originalURL, nil
 }
 
+// GetURLsByUserID retrieves all the URLs associated with a specific user.
 func (s *service) GetURLsByUserID(ctx context.Context) ([]models.UserURLsResponse, error) {
 	userID, err := extractUserIDFromCtx(ctx)
 	if err != nil {
@@ -150,6 +157,8 @@ func (s *service) GetURLsByUserID(ctx context.Context) ([]models.UserURLsRespons
 	return response, nil
 }
 
+// DeleteURLs initiates the process of deleting a set of URLs, passes models.URLDeletionTask to
+// deletion channel.
 func (s *service) DeleteURLs(ctx context.Context, urls []string) error {
 	userID, err := extractUserIDFromCtx(ctx)
 	if err != nil {
@@ -164,6 +173,11 @@ func (s *service) DeleteURLs(ctx context.Context, urls []string) error {
 	s.delChan <- task
 
 	return nil
+}
+
+// PingDB checks the current status of the database.
+func (s *service) PingDB() error {
+	return s.Storage.Ping()
 }
 
 func (s *service) startURLDeletionWorker(interval time.Duration, batchSize int) {
@@ -202,10 +216,6 @@ func (s *service) handleDeletion(tasks []models.URLDeletionTask) {
 
 		}(task.URLs, task.UserID)
 	}
-}
-
-func (s *service) PingDB() error {
-	return s.Storage.Ping()
 }
 
 func (s *service) alreadyInStorage(ctx context.Context, shortURL, userID string) bool {

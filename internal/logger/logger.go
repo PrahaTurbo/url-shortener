@@ -22,12 +22,14 @@ type Logger struct {
 	*zap.Logger
 }
 
+// Write writes data to the http response, and records the size of data written.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
 	r.responseData.size += size
 	return size, err
 }
 
+// WriteHeader sends an HTTP response header with the provided status code, and records this status.
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode

@@ -13,6 +13,7 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
 
+// ErrURLDeleted is thrown when the URL being accessed has been deleted.
 var ErrURLDeleted = errors.New("url was deleted")
 
 // SQLStorage is a struct that implements the storage.Repository interface, using Postgresql as a storage backend.
@@ -21,6 +22,7 @@ type SQLStorage struct {
 	logger *logger.Logger
 }
 
+// NewSQLStorage initializes a new SQLStorage instance with provided inputs.
 func NewSQLStorage(db *sql.DB, logger *logger.Logger) storage.Repository {
 	s := &SQLStorage{
 		db:     db,
@@ -30,6 +32,7 @@ func NewSQLStorage(db *sql.DB, logger *logger.Logger) storage.Repository {
 	return s
 }
 
+// SaveURL stores a new URL record in the SQL database.
 func (s *SQLStorage) SaveURL(ctx context.Context, url entity.URLRecord) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
@@ -46,6 +49,7 @@ func (s *SQLStorage) SaveURL(ctx context.Context, url entity.URLRecord) error {
 	return nil
 }
 
+// SaveURLBatch stores a batch of URL records in the SQL database in a single transaction.
 func (s *SQLStorage) SaveURLBatch(ctx context.Context, urls []*entity.URLRecord) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
@@ -76,6 +80,8 @@ func (s *SQLStorage) SaveURLBatch(ctx context.Context, urls []*entity.URLRecord)
 	return tx.Commit()
 }
 
+// GetURL retrieves the original URL from the SQL database given its shortened version,
+// unless it has been deleted.
 func (s *SQLStorage) GetURL(ctx context.Context, shortURL string) (string, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
@@ -104,6 +110,7 @@ func (s *SQLStorage) GetURL(ctx context.Context, shortURL string) (string, error
 	return originalURL, nil
 }
 
+// GetURLsByUserID retrieves all the URL records of a specific user from the SQL database.
 func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]entity.URLRecord, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
@@ -140,6 +147,7 @@ func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]enti
 	return records, nil
 }
 
+// CheckExistence checks if a shortened URL associated with a user exists in the SQL database.
 func (s *SQLStorage) CheckExistence(ctx context.Context, shortURL, userID string) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
@@ -163,6 +171,8 @@ func (s *SQLStorage) CheckExistence(ctx context.Context, shortURL, userID string
 	return nil
 }
 
+// DeleteURLBatch marks a set of URLs associated with a user as deleted in SQL database
+// by setting 'is_deleted' field to true for matching URLs.
 func (s *SQLStorage) DeleteURLBatch(urls []string, user string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
@@ -182,10 +192,12 @@ func (s *SQLStorage) DeleteURLBatch(urls []string, user string) error {
 	return nil
 }
 
+// Ping pings the database to check if it's alive.
 func (s *SQLStorage) Ping() error {
 	return s.db.Ping()
 }
 
+// OpenDB opens a SQL database connection given a DSN string.
 func OpenDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -199,6 +211,7 @@ func OpenDB(dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
+// CreateTable creates a 'short_urls' table in the SQL database if it doesn't exist.
 func CreateTable(db *sql.DB) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()

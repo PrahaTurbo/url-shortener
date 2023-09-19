@@ -9,11 +9,14 @@ import (
 	"github.com/google/uuid"
 )
 
+// UserIDKeyType is a custom string type that will be used as a key in request context.
 type UserIDKeyType string
 
+// UserIDKey is the key used in context to retrieve the UserID.
 const UserIDKey UserIDKeyType = "userID"
 const jwtTokenCookieName string = "token"
 
+// Claims represents the custom claims we're using in JWT tokens.
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID string

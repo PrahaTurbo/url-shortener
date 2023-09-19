@@ -1,5 +1,6 @@
 package entity
 
+// URLRecord represents a URL stored in the database.
 type URLRecord struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`

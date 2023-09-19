@@ -39,12 +39,7 @@ func TestCreateJWTAuthCookie(t *testing.T) {
 			assert.Equal(t, tt.want.httpOnly, got.HttpOnly)
 			assert.Equal(t, tt.want.path, got.Path)
 
-			tokenString := got.Value
-			token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-				return []byte(testJWTsecret), nil
-			})
-
-			token, err = jwt.ParseWithClaims(got.Value, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+			token, err := jwt.ParseWithClaims(got.Value, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 				}

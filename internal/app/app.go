@@ -14,6 +14,7 @@ type App interface {
 	Addr() string
 }
 
+// Application is an implementation of the App interface.
 type Application struct {
 	addr      string
 	srv       service.Service
@@ -21,6 +22,8 @@ type Application struct {
 	jwtSecret string
 }
 
+// NewApp initializes a new Application struct with the provided service, logger, server address and JWT Secret,
+// and returns it as an App interface.
 func NewApp(addr, jwtSecret string, srv service.Service, logger *logger.Logger) App {
 	return &Application{
 		addr:      addr,
@@ -30,6 +33,7 @@ func NewApp(addr, jwtSecret string, srv service.Service, logger *logger.Logger) 
 	}
 }
 
+// Addr is a receiver function on the Application struct that returns the server's address.
 func (a *Application) Addr() string {
 	return a.addr
 }
