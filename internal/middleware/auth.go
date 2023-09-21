@@ -3,33 +3,41 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"github.com/PrahaTurbo/url-shortener/config"
+	"net/http"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"net/http"
 )
 
+// UserIDKeyType is a custom string type that will be used as a key in request context.
+type UserIDKeyType string
+
+// UserIDKey is the key used in context to retrieve the UserID.
+const UserIDKey UserIDKeyType = "userID"
 const jwtTokenCookieName string = "token"
 
+// Claims represents the custom claims we're using in JWT tokens.
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID string
 }
 
+// Auth is a middleware for JWT authentication.
+// The middleware checks if JWT Token is present in a cookie and valid.
+// If the cookie is not present or JWT Token is not valid, a new cookie with JWT Token is created.
+//
+// The middleware sets the user id (from the JWT claims) in the request context.
 func Auth(jwtSecret string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var cookie *http.Cookie
-
 			cookie, err := r.Cookie(jwtTokenCookieName)
 			if err != nil {
-				newCookie, err := createJWTAuthCookie(jwtSecret)
+				cookie, err = createJWTAuthCookie(jwtSecret)
 				if err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
 
-				cookie = newCookie
 				http.SetCookie(w, cookie)
 			}
 
@@ -64,7 +72,7 @@ func Auth(jwtSecret string) func(next http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), config.UserIDKey, claims.UserID)
+			ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

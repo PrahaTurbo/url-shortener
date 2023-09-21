@@ -4,19 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/PrahaTurbo/url-shortener/config"
-	"github.com/PrahaTurbo/url-shortener/internal/logger"
-	"github.com/PrahaTurbo/url-shortener/internal/storage"
-	"github.com/PrahaTurbo/url-shortener/internal/storage/mock"
-	"go.uber.org/mock/gomock"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/PrahaTurbo/url-shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
+
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/mocks"
+	"github.com/PrahaTurbo/url-shortener/internal/models"
+	"github.com/PrahaTurbo/url-shortener/internal/service"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/pg"
 )
 
 var (
@@ -24,41 +25,18 @@ var (
 	addr    = "localhost:8080"
 )
 
-func setupTestApp(mockStorage *mock.MockRepository) application {
-	srv := service.NewService(baseURL, mockStorage)
-
+func setupTestApp() Application {
 	log, _ := logger.Initialize("debug")
 
-	return application{
+	return Application{
 		addr:      addr,
-		srv:       srv,
 		logger:    log,
 		jwtSecret: "secret_key",
 	}
 }
 
 func Test_application_makeURL(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	s := mock.NewMockRepository(ctrl)
-
-	urlRecord := storage.URLRecord{
-		ShortURL:    "fpCk-c",
-		OriginalURL: "https://ya.ru",
-	}
-
-	s.EXPECT().
-		CheckExistence(gomock.Any(), urlRecord.ShortURL, "1").
-		Return(nil)
-
-	s.EXPECT().
-		CheckExistence(gomock.Any(), "FgAJzm", "1").
-		Return(errors.New("no url"))
-
-	s.EXPECT().
-		SaveURL(gomock.Any(), gomock.Any()).
-		Return(nil)
-
-	app := setupTestApp(s)
+	app := setupTestApp()
 
 	type want struct {
 		contentType string
@@ -70,49 +48,77 @@ func Test_application_makeURL(t *testing.T) {
 		name        string
 		request     string
 		requestBody string
+		prepare     func(s *mocks.MockService)
 		want        want
 	}{
 		{
-			name:        "save url that already in storage",
+			name:        "shouldn't save url that already in storage",
 			request:     "/",
-			requestBody: urlRecord.OriginalURL,
+			requestBody: "https://ya.ru",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					SaveURL(gomock.Any(), "https://ya.ru").
+					Return(baseURL+"/fpCk-c", service.ErrAlready)
+			},
 			want: want{
 				contentType: "text/plain",
 				statusCode:  http.StatusConflict,
-				response:    baseURL + "/" + urlRecord.ShortURL,
+				response:    baseURL + "/fpCk-c",
 			},
 		},
 		{
-			name:        "save new url",
+			name:        "should save new url successfully",
 			request:     "/",
-			requestBody: "https://yandex.ru",
+			requestBody: "https://ya.ru",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					SaveURL(gomock.Any(), "https://ya.ru").
+					Return(baseURL+"/fpCk-c", nil)
+			},
 			want: want{
 				contentType: "text/plain",
 				statusCode:  http.StatusCreated,
-				response:    baseURL + "/FgAJzm",
+				response:    baseURL + "/fpCk-c",
 			},
 		},
 		{
-			name:        "unsupported request path",
+			name:        "should return error if unsupported request path",
 			request:     "/make-url",
-			requestBody: urlRecord.OriginalURL,
+			requestBody: "https://ya.ru",
+			prepare:     func(s *mocks.MockService) {},
 			want: want{
 				contentType: "text/plain",
 				statusCode:  http.StatusBadRequest,
-				response:    "",
+			},
+		},
+		{
+			name:        "should return internal server error",
+			request:     "/",
+			requestBody: "https://ya.ru",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					SaveURL(gomock.Any(), "https://ya.ru").
+					Return("", errors.New("internal error"))
+			},
+			want: want{
+				contentType: "text/plain",
+				statusCode:  http.StatusInternalServerError,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			service := mocks.NewMockService(ctrl)
+
+			tt.prepare(service)
+			app.srv = service
+
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
-			ctx := context.WithValue(request.Context(), config.UserIDKey, "1")
-			request = request.WithContext(ctx)
-
 			w := httptest.NewRecorder()
-			app.makeURLHandler(w, request)
+			app.MakeURLHandler(w, request)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 
@@ -127,23 +133,7 @@ func Test_application_makeURL(t *testing.T) {
 }
 
 func Test_application_getOrigin(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	s := mock.NewMockRepository(ctrl)
-
-	urlRecord := storage.URLRecord{
-		ShortURL:    "fpCk-c",
-		OriginalURL: "https://ya.ru",
-	}
-
-	s.EXPECT().
-		GetURL(gomock.Any(), urlRecord.ShortURL).
-		Return(urlRecord.OriginalURL, nil)
-
-	s.EXPECT().
-		GetURL(gomock.Any(), "Azcxc").
-		Return("", errors.New("no url"))
-
-	app := setupTestApp(s)
+	app := setupTestApp()
 
 	type want struct {
 		location   string
@@ -153,27 +143,57 @@ func Test_application_getOrigin(t *testing.T) {
 	tests := []struct {
 		name    string
 		request string
+		prepare func(s *mocks.MockService)
 		want    want
 	}{
 		{
-			name:    "success",
-			request: "/" + urlRecord.ShortURL,
+			name:    "should successfully get original url",
+			request: "/fpCk-c",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					GetURL(gomock.Any(), "fpCk-c").
+					Return("https://ya.ru", nil)
+			},
 			want: want{
-				location:   urlRecord.OriginalURL,
+				location:   "https://ya.ru",
 				statusCode: http.StatusTemporaryRedirect,
 			},
 		},
 		{
-			name:    "wrong url id",
-			request: "/Azcxc",
+			name:    "should fail if wrong url id",
+			request: "/azcxc",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					GetURL(gomock.Any(), "azcxc").
+					Return("", errors.New("no url"))
+			},
 			want: want{
 				location:   "",
 				statusCode: http.StatusBadRequest,
 			},
 		},
+		{
+			name:    "should return 410 if urls was deleted",
+			request: "/fpCk-c",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					GetURL(gomock.Any(), "fpCk-c").
+					Return("", pg.ErrURLDeleted)
+			},
+			want: want{
+				location:   "",
+				statusCode: http.StatusGone,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			service := mocks.NewMockService(ctrl)
+
+			tt.prepare(service)
+			app.srv = service
+
 			r := httptest.NewRequest(http.MethodGet, tt.request, nil)
 			w := httptest.NewRecorder()
 
@@ -181,10 +201,7 @@ func Test_application_getOrigin(t *testing.T) {
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, chiCtx))
 			chiCtx.URLParams.Add("id", tt.request[1:])
 
-			ctx := context.WithValue(r.Context(), config.UserIDKey, "1")
-			r = r.WithContext(ctx)
-
-			app.getOriginHandler(w, r)
+			app.GetOriginHandler(w, r)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 
@@ -198,27 +215,7 @@ func Test_application_getOrigin(t *testing.T) {
 }
 
 func Test_application_jsonHandler(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	s := mock.NewMockRepository(ctrl)
-
-	urlRecord := storage.URLRecord{
-		ShortURL:    "fpCk-c",
-		OriginalURL: "https://ya.ru",
-	}
-
-	s.EXPECT().
-		CheckExistence(gomock.Any(), urlRecord.ShortURL, "1").
-		Return(nil)
-
-	s.EXPECT().
-		CheckExistence(gomock.Any(), "FgAJzm", "1").
-		Return(errors.New("no url"))
-
-	s.EXPECT().
-		SaveURL(gomock.Any(), gomock.Any()).
-		Return(nil)
-
-	app := setupTestApp(s)
+	app := setupTestApp()
 
 	type want struct {
 		statusCode int
@@ -229,47 +226,74 @@ func Test_application_jsonHandler(t *testing.T) {
 		name        string
 		request     string
 		requestBody string
+		prepare     func(s *mocks.MockService)
 		want        want
 	}{
 		{
-			name:        "save url that already in storage",
+			name:        "shouldn't save url that already in storage",
 			request:     "/api/shorten",
-			requestBody: fmt.Sprintf(`{"url": "%s"}`, urlRecord.OriginalURL),
+			requestBody: `{"url": "https://ya.ru"}`,
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					SaveURL(gomock.Any(), "https://ya.ru").
+					Return(baseURL+"/fpCk-c", service.ErrAlready)
+			},
 			want: want{
 				statusCode: http.StatusConflict,
-				response:   fmt.Sprintf(`{"result": "%s/%s"}`, baseURL, urlRecord.ShortURL),
+				response:   fmt.Sprintf(`{"result": "%s/fpCk-c"}`, baseURL),
 			},
 		},
 		{
-			name:        "save new url",
+			name:        "should save new url successfully",
 			request:     "/api/shorten",
 			requestBody: `{"url": "https://yandex.ru"}`,
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					SaveURL(gomock.Any(), "https://yandex.ru").
+					Return(baseURL+"/FgAJzm", nil)
+			},
 			want: want{
 				statusCode: http.StatusCreated,
 				response:   fmt.Sprintf(`{"result": "%s/FgAJzm"}`, baseURL),
 			},
 		},
 		{
-			name:        "post unmarshal error",
+			name:        "should fail with unmarshal error",
 			request:     "/api/shorten",
 			requestBody: `{"urm": "https://yandex.ru"}`,
+			prepare:     func(s *mocks.MockService) {},
 			want: want{
 				statusCode: http.StatusBadRequest,
-				response:   "",
+			},
+		},
+		{
+			name:        "should return internal server error",
+			request:     "/api/shorten",
+			requestBody: `{"url": "https://ya.ru"}`,
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					SaveURL(gomock.Any(), "https://ya.ru").
+					Return("", errors.New("internal error"))
+			},
+			want: want{
+				statusCode: http.StatusInternalServerError,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			service := mocks.NewMockService(ctrl)
+
+			tt.prepare(service)
+			app.srv = service
+
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
-			ctx := context.WithValue(request.Context(), config.UserIDKey, "1")
-			request = request.WithContext(ctx)
-
 			w := httptest.NewRecorder()
-			app.jsonHandler(w, request)
+			app.JSONHandler(w, request)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 
@@ -281,44 +305,45 @@ func Test_application_jsonHandler(t *testing.T) {
 }
 
 func Test_application_pingHandler(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	s := mock.NewMockRepository(ctrl)
+	app := setupTestApp()
 
 	tests := []struct {
 		name       string
 		statusCode int
-		fail       bool
+		prepare    func(s *mocks.MockService)
 	}{
 		{
-			name:       "ping success",
+			name:       "should ping successfully",
 			statusCode: 200,
-			fail:       false,
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					PingDB().
+					Return(nil)
+			},
 		},
 		{
-			name:       "ping failed",
+			name:       "should ping unsuccessfully",
 			statusCode: 500,
-			fail:       true,
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					PingDB().
+					Return(errors.New("no db"))
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			service := mocks.NewMockService(ctrl)
+
+			tt.prepare(service)
+			app.srv = service
+
 			r := httptest.NewRequest(http.MethodGet, "/ping", nil)
 			w := httptest.NewRecorder()
 
-			if tt.fail {
-				s.EXPECT().
-					Ping().
-					Return(errors.New("no sql database"))
-			} else {
-				s.EXPECT().
-					Ping().
-					Return(nil)
-			}
-
-			app := setupTestApp(s)
-
-			app.pingHandler(w, r)
+			app.PingHandler(w, r)
 
 			assert.Equal(t, tt.statusCode, w.Code)
 		})
@@ -326,17 +351,7 @@ func Test_application_pingHandler(t *testing.T) {
 }
 
 func Test_application_batchHandler(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	s := mock.NewMockRepository(ctrl)
-
-	s.EXPECT().
-		CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(errors.New("no url")).AnyTimes()
-
-	s.EXPECT().SaveURLBatch(gomock.Any(), gomock.Any()).
-		Return(nil).AnyTimes()
-
-	app := setupTestApp(s)
+	app := setupTestApp()
 
 	successBody := fmt.Sprintf(`[{"correlation_id": "1", "short_url": "%s/fpCk-c"}]`, baseURL)
 
@@ -349,44 +364,193 @@ func Test_application_batchHandler(t *testing.T) {
 		name        string
 		request     string
 		requestBody string
+		prepare     func(s *mocks.MockService)
 		want        want
 	}{
 		{
-			name:        "post success",
+			name:        "should save batch urls successfully",
 			request:     "/api/shorten/batch",
 			requestBody: `[{"correlation_id": "1", "original_url": "https://ya.ru"}]`,
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					SaveBatch(gomock.Any(), []models.BatchRequest{
+						{
+							CorrelationID: "1",
+							OriginalURL:   "https://ya.ru",
+						},
+					}).
+					Return([]models.BatchResponse{
+						{
+							CorrelationID: "1",
+							ShortURL:      baseURL + "/fpCk-c",
+						},
+					}, nil)
+			},
 			want: want{
 				statusCode: http.StatusCreated,
 				response:   successBody,
 			},
 		},
 		{
-			name:        "post unmarshal error",
+			name:        "should fail to save",
 			request:     "/api/shorten/batch",
-			requestBody: `[{"correlation_id": "1", "url": "https://ya.ru"}]`,
+			requestBody: `[{"correlation_id": "1", "original_url": "https://ya.ru"}]`,
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					SaveBatch(gomock.Any(), []models.BatchRequest{
+						{
+							CorrelationID: "1",
+							OriginalURL:   "https://ya.ru",
+						},
+					}).
+					Return(nil, errors.New("can't save"))
+			},
 			want: want{
 				statusCode: http.StatusInternalServerError,
-				response:   "",
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			service := mocks.NewMockService(ctrl)
+
+			tt.prepare(service)
+			app.srv = service
+
 			reader := strings.NewReader(tt.requestBody)
 			request := httptest.NewRequest(http.MethodPost, tt.request, reader)
 
-			ctx := context.WithValue(request.Context(), config.UserIDKey, "mocked-user-id")
-			request = request.WithContext(ctx)
-
 			w := httptest.NewRecorder()
-			app.batchHandler(w, request)
+			app.BatchHandler(w, request)
 
 			assert.Equal(t, tt.want.statusCode, w.Code)
 
 			if tt.want.response != "" {
 				assert.JSONEq(t, tt.want.response, w.Body.String())
 			}
+		})
+	}
+}
+
+func Test_application_getUserURLsHandler(t *testing.T) {
+	app := setupTestApp()
+
+	type want struct {
+		statusCode  int
+		contentType string
+	}
+
+	tests := []struct {
+		name    string
+		request string
+		prepare func(s *mocks.MockService)
+		want    want
+	}{
+		{
+			name:    "should return user urls successfully",
+			request: "/api/user/urls",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					GetURLsByUserID(gomock.Any()).
+					Return([]models.UserURLsResponse{
+						{
+							ShortURL:    baseURL + "/123",
+							OriginalURL: "ya.ru",
+						},
+					}, nil)
+			},
+			want: want{
+				statusCode:  http.StatusOK,
+				contentType: "application/json",
+			},
+		},
+		{
+			name:    "should return 204 if user doesn't have urls",
+			request: "/api/user/urls",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					GetURLsByUserID(gomock.Any()).
+					Return(nil, errors.New("no urls"))
+			},
+			want: want{
+				statusCode: http.StatusNoContent,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			service := mocks.NewMockService(ctrl)
+
+			tt.prepare(service)
+			app.srv = service
+
+			request := httptest.NewRequest(http.MethodGet, tt.request, nil)
+
+			w := httptest.NewRecorder()
+			app.GetUserURLsHandler(w, request)
+
+			assert.Equal(t, tt.want.statusCode, w.Code)
+			assert.Equal(t, tt.want.contentType, w.Header().Get("Content-type"))
+		})
+	}
+}
+
+func Test_application_deleteURLsHandler(t *testing.T) {
+	app := setupTestApp()
+
+	type want struct {
+		statusCode int
+	}
+
+	tests := []struct {
+		name        string
+		request     string
+		requestBody string
+		prepare     func(s *mocks.MockService)
+		want        want
+	}{
+		{
+			name:        "should delete user urls successfully",
+			request:     "/api/user/urls",
+			requestBody: `["6qxTVvsy", "RTfd56hn", "Jlfd67ds"]`,
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					DeleteURLs(gomock.Any(), []string{"6qxTVvsy", "RTfd56hn", "Jlfd67ds"}).
+					Return(nil)
+			},
+			want: want{
+				statusCode: http.StatusAccepted,
+			},
+		},
+		{
+			name:    "should return error if cannot unmarshal",
+			request: "/api/user/urls",
+			prepare: func(s *mocks.MockService) {},
+			want: want{
+				statusCode: http.StatusInternalServerError,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			service := mocks.NewMockService(ctrl)
+
+			tt.prepare(service)
+			app.srv = service
+
+			reader := strings.NewReader(tt.requestBody)
+			request := httptest.NewRequest(http.MethodDelete, tt.request, reader)
+
+			w := httptest.NewRecorder()
+			app.DeleteURLsHandler(w, request)
+
+			assert.Equal(t, tt.want.statusCode, w.Code)
 		})
 	}
 }

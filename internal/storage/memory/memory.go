@@ -5,25 +5,31 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/PrahaTurbo/url-shortener/internal/logger"
-	"github.com/PrahaTurbo/url-shortener/internal/storage"
-	"go.uber.org/zap"
 	"os"
 	"sync"
+
+	"go.uber.org/zap"
+
+	"github.com/PrahaTurbo/url-shortener/internal/logger"
+	"github.com/PrahaTurbo/url-shortener/internal/storage"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
 
+// InMemStorage maintains an in-memory representation of URL shortening data.
 type InMemStorage struct {
 	urls            map[string]string
-	users           map[string][]*storage.URLRecord
+	users           map[string][]entity.URLRecord
 	storageFilePath string
 	logger          *logger.Logger
 	mu              sync.Mutex
 }
 
+// NewInMemStorage initializes a new InMemStorage instance with provided inputs
+// and restore previous URL shortening data from the file if it exists.
 func NewInMemStorage(filePath string, logger *logger.Logger) storage.Repository {
 	s := &InMemStorage{
 		urls:            make(map[string]string),
-		users:           make(map[string][]*storage.URLRecord),
+		users:           make(map[string][]entity.URLRecord),
 		storageFilePath: filePath,
 		logger:          logger,
 	}
@@ -35,7 +41,9 @@ func NewInMemStorage(filePath string, logger *logger.Logger) storage.Repository 
 	return s
 }
 
-func (s *InMemStorage) SaveURL(_ context.Context, r *storage.URLRecord) error {
+// SaveURL stores a new URL record in InMemStorage and writes the record to
+// the file if a filePath was specified during initialization.
+func (s *InMemStorage) SaveURL(_ context.Context, r entity.URLRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -49,9 +57,11 @@ func (s *InMemStorage) SaveURL(_ context.Context, r *storage.URLRecord) error {
 	return nil
 }
 
-func (s *InMemStorage) SaveURLBatch(ctx context.Context, urls []*storage.URLRecord) error {
+// SaveURLBatch stores a batch of URL records in InMemStorage by iterating through the input
+// and calling SaveURL function for each record.
+func (s *InMemStorage) SaveURLBatch(ctx context.Context, urls []*entity.URLRecord) error {
 	for _, r := range urls {
-		if err := s.SaveURL(ctx, r); err != nil {
+		if err := s.SaveURL(ctx, *r); err != nil {
 			return err
 		}
 	}
@@ -59,6 +69,7 @@ func (s *InMemStorage) SaveURLBatch(ctx context.Context, urls []*storage.URLReco
 	return nil
 }
 
+// GetURL retrieves the original URL from InMemStorage given its shortened version.
 func (s *InMemStorage) GetURL(_ context.Context, shortURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -71,7 +82,8 @@ func (s *InMemStorage) GetURL(_ context.Context, shortURL string) (string, error
 	return originalURL, nil
 }
 
-func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]*storage.URLRecord, error) {
+// GetURLsByUserID retrieves all the URL records of a specific user from InMemStorage.
+func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]entity.URLRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -83,25 +95,30 @@ func (s *InMemStorage) GetURLsByUserID(_ context.Context, userID string) ([]*sto
 	return records, nil
 }
 
-func (s *InMemStorage) DeleteURLBatch(urls []string, user string) {
+// DeleteURLBatch marks a set of URLs associated with a user as deleted in InMemStorage
+// by iterating through the user’s URL records and setting DeletedFlag to true for
+// matching URLs.
+func (s *InMemStorage) DeleteURLBatch(urls []string, user string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	records, ok := s.users[user]
 	if !ok {
-		s.logger.Error("cannot delete batch urls: user not found")
-		return
+		return errors.New("user not found")
 	}
 
-	for _, url := range urls {
-		for _, record := range records {
-			if url == record.ShortURL {
-				record.DeletedFlag = true
+	for i := range records {
+		for _, url := range urls {
+			if url == records[i].ShortURL {
+				records[i].DeletedFlag = true
 			}
 		}
 	}
+
+	return nil
 }
 
+// CheckExistence checks if a shortened URL associated with a user exists in InMemStorage.
 func (s *InMemStorage) CheckExistence(_ context.Context, shortURL, userID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -120,6 +137,8 @@ func (s *InMemStorage) CheckExistence(_ context.Context, shortURL, userID string
 	return fmt.Errorf("no urls for user")
 }
 
+// Ping returns an error as InMemStorage does not maintain connection to any external
+// SQL database.
 func (s *InMemStorage) Ping() error {
 	return errors.New("no connection to sql database")
 }
@@ -136,19 +155,19 @@ func (s *InMemStorage) restoreFromFile() error {
 
 	dec := json.NewDecoder(f)
 	for dec.More() {
-		var r storage.URLRecord
+		var r entity.URLRecord
 		if err := dec.Decode(&r); err != nil {
 			return err
 		}
 
 		s.urls[r.ShortURL] = r.OriginalURL
-		s.users[r.UserID] = append(s.users[r.UserID], &r)
+		s.users[r.UserID] = append(s.users[r.UserID], r)
 	}
 
 	return nil
 }
 
-func (s *InMemStorage) writeRecordToFile(r *storage.URLRecord) error {
+func (s *InMemStorage) writeRecordToFile(r entity.URLRecord) error {
 	if s.storageFilePath == "" {
 		return nil
 	}
