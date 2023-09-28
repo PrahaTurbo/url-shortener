@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,9 +15,13 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/middleware"
 	"github.com/PrahaTurbo/url-shortener/internal/mocks"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
+	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
 
+type badContextKey string
+
 var baseURL = "localhost:8080"
+var errInternal = errors.New("internal error")
 
 func setupService() service {
 	log, _ := logger.Initialize("debug")
@@ -71,6 +76,31 @@ func TestService_SaveURL(t *testing.T) {
 				err: ErrAlready,
 			},
 		},
+		{
+			name:    "should return error if can't extract user id from context",
+			url:     "https://yandex.ru",
+			prepare: func(s *mocks.MockRepository) {},
+			want: want{
+				err: ErrExtractFromContext,
+			},
+		},
+		{
+			name: "should return error if failed to save url",
+			url:  "https://yandex.ru",
+			prepare: func(s *mocks.MockRepository) {
+				gomock.InOrder(
+					s.EXPECT().
+						CheckExistence(gomock.Any(), "FgAJzm", "1").
+						Return(errors.New("no url")),
+					s.EXPECT().
+						SaveURL(gomock.Any(), gomock.Any()).
+						Return(errInternal),
+				)
+			},
+			want: want{
+				err: errInternal,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -78,6 +108,11 @@ func TestService_SaveURL(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			storage := mocks.NewMockRepository(ctrl)
 			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
+
+			if errors.Is(tt.want.err, ErrExtractFromContext) {
+				var k badContextKey = "bad_key"
+				ctx = context.WithValue(context.Background(), k, 1)
+			}
 
 			tt.prepare(storage)
 			service.Storage = storage
@@ -173,7 +208,7 @@ func TestService_SaveBatch(t *testing.T) {
 
 	type want struct {
 		resp []models.BatchResponse
-		err  bool
+		err  error
 	}
 
 	tests := []struct {
@@ -207,6 +242,33 @@ func TestService_SaveBatch(t *testing.T) {
 			},
 		},
 		{
+			name:     "should skip one url if it is already in storage",
+			batchReq: batch,
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(errors.New("no url"))
+				s.EXPECT().
+					CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(nil)
+				s.EXPECT().
+					SaveURLBatch(gomock.Any(), gomock.Len(1)).
+					Return(nil)
+			},
+			want: want{
+				resp: []models.BatchResponse{
+					{
+						CorrelationID: "1",
+						ShortURL:      baseURL + "/fpCk-c",
+					},
+					{
+						CorrelationID: "2",
+						ShortURL:      baseURL + "/FgAJzm",
+					},
+				},
+			},
+		},
+		{
 			name:     "should fail while saving batch",
 			batchReq: batch,
 			prepare: func(s *mocks.MockRepository) {
@@ -215,10 +277,30 @@ func TestService_SaveBatch(t *testing.T) {
 					Return(errors.New("no url")).AnyTimes()
 				s.EXPECT().
 					SaveURLBatch(gomock.Any(), gomock.Any()).
-					Return(errors.New("cannot save batch urls"))
+					Return(errInternal)
 			},
 			want: want{
-				err: true,
+				err: errInternal,
+			},
+		},
+		{
+			name:     "should return error if can't extract user id from context",
+			batchReq: batch,
+			prepare:  func(s *mocks.MockRepository) {},
+			want: want{
+				err: ErrExtractFromContext,
+			},
+		},
+		{
+			name: "should return error if there is no original_url in batch request",
+			batchReq: []models.BatchRequest{
+				{
+					CorrelationID: "1",
+				},
+			},
+			prepare: func(s *mocks.MockRepository) {},
+			want: want{
+				err: ErrNoOriginalURL,
 			},
 		},
 	}
@@ -229,24 +311,179 @@ func TestService_SaveBatch(t *testing.T) {
 			storage := mocks.NewMockRepository(ctrl)
 			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
 
+			if errors.Is(tt.want.err, ErrExtractFromContext) {
+				var k badContextKey = "bad_key"
+				ctx = context.WithValue(context.Background(), k, 1)
+			}
+
 			tt.prepare(storage)
 			service.Storage = storage
 
 			resp, err := service.SaveBatch(ctx, tt.batchReq)
 
-			if tt.want.err {
-				assert.NotEmpty(t, err)
-				return
+			if tt.want.err != nil {
+				assert.Equal(t, tt.want.err, err)
 			}
 
-			if assert.NoError(t, err) {
-				assert.Equal(t, tt.want.resp, resp)
-			}
+			assert.Equal(t, tt.want.resp, resp)
 		})
 	}
 }
 
-// no-lint:errcheck
+func TestService_GetURLsByUserID(t *testing.T) {
+	service := setupService()
+
+	type want struct {
+		resp []models.UserURLsResponse
+		err  error
+	}
+
+	tests := []struct {
+		name    string
+		prepare func(s *mocks.MockRepository)
+		want    want
+	}{
+		{
+			name: "should save batch successfully",
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					GetURLsByUserID(gomock.Any(), "1").
+					Return([]entity.URLRecord{
+						{
+							ShortURL:    "123abc",
+							OriginalURL: "ya.ru",
+						},
+					}, nil)
+			},
+			want: want{
+				resp: []models.UserURLsResponse{
+					{
+						ShortURL:    baseURL + "/123abc",
+						OriginalURL: "ya.ru",
+					},
+				},
+			},
+		},
+		{
+			name: "should fail while getting user urls",
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					GetURLsByUserID(gomock.Any(), "1").
+					Return(nil, errInternal)
+			},
+			want: want{
+				err: errInternal,
+			},
+		},
+		{
+			name:    "should return error if can't extract user id from context",
+			prepare: func(s *mocks.MockRepository) {},
+			want: want{
+				err: ErrExtractFromContext,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			storage := mocks.NewMockRepository(ctrl)
+			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
+
+			if errors.Is(tt.want.err, ErrExtractFromContext) {
+				var k badContextKey = "bad_key"
+				ctx = context.WithValue(context.Background(), k, 1)
+			}
+
+			tt.prepare(storage)
+			service.Storage = storage
+
+			resp, err := service.GetURLsByUserID(ctx)
+
+			if tt.want.err != nil {
+				assert.Equal(t, tt.want.err, err)
+			}
+
+			assert.Equal(t, tt.want.resp, resp)
+		})
+	}
+}
+
+func TestService_PingDB(t *testing.T) {
+	service := setupService()
+
+	tests := []struct {
+		name    string
+		prepare func(s *mocks.MockRepository)
+		wantErr bool
+	}{
+		{
+			name: "should ping  successfully",
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().Ping().Return(nil)
+			},
+			wantErr: false,
+		},
+		{
+			name: "should ping failed",
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().Ping().Return(errors.New("no db"))
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			storage := mocks.NewMockRepository(ctrl)
+
+			tt.prepare(storage)
+			service.Storage = storage
+
+			err := service.PingDB()
+			assert.Equal(t, tt.wantErr, err != nil)
+		})
+	}
+}
+
+func TestService_DeleteURLs(t *testing.T) {
+	service := setupService()
+
+	tests := []struct {
+		name    string
+		urls    []string
+		wantErr error
+	}{
+		{
+			name: "should delete urls successfully",
+			urls: []string{strings.Repeat("yandex.ru", 10)},
+		},
+		{
+			name:    "should return error if can't extract user id from context",
+			wantErr: ErrExtractFromContext,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
+
+			if errors.Is(tt.wantErr, ErrExtractFromContext) {
+				var k badContextKey = "bad_key"
+				ctx = context.WithValue(context.Background(), k, 1)
+			}
+
+			service.delChan = make(chan models.URLDeletionTask, 10)
+
+			go service.startURLDeletionWorker(time.Second*1, 10)
+
+			err := service.DeleteURLs(ctx, tt.urls)
+			assert.Equal(t, tt.wantErr, err)
+		})
+	}
+}
+
 func BenchmarkService_SaveBatch(b *testing.B) {
 	service := setupService()
 	ctrl := gomock.NewController(b)
