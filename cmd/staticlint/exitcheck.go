@@ -6,6 +6,8 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// ExitCheckAnalyzer defines a static analysis tool to check for calls to os.Exit
+// in the main function. If the os.Exit call is found, it will raise an issue.
 var ExitCheckAnalyzer = &analysis.Analyzer{
 	Name: "exitcheck",
 	Doc:  "check for direct os.Exit calls in main func",
