@@ -246,6 +246,7 @@ func TestService_SaveBatch(t *testing.T) {
 	}
 }
 
+// no-lint:errcheck
 func BenchmarkService_SaveBatch(b *testing.B) {
 	service := setupService()
 	ctrl := gomock.NewController(b)
@@ -272,7 +273,10 @@ func BenchmarkService_SaveBatch(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		service.SaveBatch(ctx, batchReqs)
+		_, err := service.SaveBatch(ctx, batchReqs)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -293,6 +297,9 @@ func BenchmarkService_DeleteURLs(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		service.DeleteURLs(ctx, urls)
+		err := service.DeleteURLs(ctx, urls)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }

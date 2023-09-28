@@ -44,7 +44,9 @@ func (a *Application) MakeURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(statusCode)
-	w.Write([]byte(shortURL))
+	if _, err := w.Write([]byte(shortURL)); err != nil {
+		a.logger.Error("failed to write a response", zap.Error(err))
+	}
 }
 
 // JSONHandler is an HTTP handler that saves URL from the JSON in request body and creates a short URL version.
