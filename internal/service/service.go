@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,9 +12,6 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
 )
-
-// ErrAlready is an error that is thrown when a URL is already present in the storage.
-var ErrAlready = errors.New("URL already in storage")
 
 // Service is an interface for API that handle URL shortening and associated operations.
 type Service interface {
@@ -89,7 +85,7 @@ func (s *service) SaveBatch(ctx context.Context, batch []models.BatchRequest) ([
 
 	for _, req := range batch {
 		if req.OriginalURL == "" {
-			return nil, errors.New("no url in original_url field")
+			return nil, ErrNoOriginalURL
 		}
 
 		shortURL := generateShortURL(req.OriginalURL)

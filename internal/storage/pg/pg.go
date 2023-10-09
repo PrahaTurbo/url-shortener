@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/storage"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
@@ -58,7 +60,11 @@ func (s *SQLStorage) SaveURLBatch(ctx context.Context, urls []*entity.URLRecord)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err = tx.Rollback(); err != nil {
+			s.logger.Error("failed to rollback queries", zap.Error(err))
+		}
+	}()
 
 	query := `
 		INSERT INTO short_urls (id, user_id, short_url, original_url)
@@ -68,7 +74,11 @@ func (s *SQLStorage) SaveURLBatch(ctx context.Context, urls []*entity.URLRecord)
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() {
+		if err := stmt.Close(); err != nil {
+			s.logger.Error("failed to close statement", zap.Error(err))
+		}
+	}()
 
 	for _, url := range urls {
 		_, err := stmt.ExecContext(timeoutCtx, url.UUID, url.UserID, url.ShortURL, url.OriginalURL)
@@ -124,7 +134,11 @@ func (s *SQLStorage) GetURLsByUserID(ctx context.Context, userID string) ([]enti
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			s.logger.Error("failed to close rows", zap.Error(err))
+		}
+	}()
 
 	var records []entity.URLRecord
 	for rows.Next() {

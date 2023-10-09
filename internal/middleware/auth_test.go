@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -9,6 +11,50 @@ import (
 )
 
 const testJWTsecret = "test-secret"
+
+func TestAuth(t *testing.T) {
+	tests := []struct {
+		name   string
+		cookie *http.Cookie
+		status int
+	}{
+		{
+			name:   "invalid JWT",
+			cookie: &http.Cookie{Name: jwtTokenCookieName, Value: "invalidJwtToken"},
+			status: http.StatusUnauthorized,
+		},
+		{
+			name:   "valid JWT",
+			cookie: func() *http.Cookie { c, _ := createJWTAuthCookie(testJWTsecret); return c }(),
+			status: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req, err := http.NewRequest("GET", "/", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			req.AddCookie(test.cookie)
+			rr := httptest.NewRecorder()
+
+			var userID interface{}
+			handler := func(w http.ResponseWriter, r *http.Request) {
+				userID = r.Context().Value(UserIDKey)
+			}
+			authMiddleware := Auth(testJWTsecret)
+
+			authMiddleware(http.HandlerFunc(handler)).ServeHTTP(rr, req)
+			assert.Equal(t, test.status, rr.Code)
+
+			if test.status == http.StatusOK {
+				assert.NotNil(t, userID, "userID should not be nil")
+			}
+		})
+	}
+}
 
 func TestCreateJWTAuthCookie(t *testing.T) {
 	type want struct {

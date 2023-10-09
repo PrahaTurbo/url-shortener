@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"compress/gzip"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -18,7 +19,11 @@ func Decompress(next http.Handler) http.Handler {
 			}
 
 			r.Body = cr
-			defer cr.Close()
+			defer func() {
+				if err := cr.Close(); err != nil {
+					log.Println("failed to close gzip.Reader:", err)
+				}
+			}()
 		}
 
 		next.ServeHTTP(w, r)

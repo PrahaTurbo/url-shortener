@@ -151,7 +151,11 @@ func (s *InMemStorage) restoreFromFile() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			s.logger.Error("failed to close the file", zap.Error(err))
+		}
+	}()
 
 	dec := json.NewDecoder(f)
 	for dec.More() {
@@ -176,7 +180,11 @@ func (s *InMemStorage) writeRecordToFile(r entity.URLRecord) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			s.logger.Error("failed to close the file", zap.Error(err))
+		}
+	}()
 
 	if err := json.NewEncoder(f).Encode(r); err != nil {
 		return err

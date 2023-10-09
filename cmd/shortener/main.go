@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -14,7 +15,17 @@ import (
 	"github.com/PrahaTurbo/url-shortener/internal/storage/provider"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 func main() {
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
+
 	c := cfg.Load()
 	lgr, err := logger.Initialize(c.LogLevel)
 	if err != nil {

@@ -4,9 +4,17 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 
 	"github.com/PrahaTurbo/url-shortener/internal/middleware"
+)
+
+// Error variables, used in the service
+var (
+	ErrExtractFromContext = errors.New("cannot extract userID from context")
+	ErrAlready            = errors.New("URL already in storage")
+	ErrNoOriginalURL      = errors.New("no url in original_url field")
 )
 
 func extractUserIDFromCtx(ctx context.Context) (string, error) {
