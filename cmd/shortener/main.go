@@ -41,7 +41,23 @@ func main() {
 	application := app.NewApp(c.Addr, c.JWTSecret, srv, lgr)
 
 	lgr.Info("Server is running", zap.String("address", application.Addr()))
-	if err := http.ListenAndServe(application.Addr(), application.Router()); err != nil {
-		log.Fatal(err)
+
+	if c.EnableHTTPS {
+		if err := http.ListenAndServeTLS(
+			application.Addr(),
+			"cmd/shortener/cert.pem",
+			"cmd/shortener/key.pem",
+			application.Router(),
+		); err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		if err := http.ListenAndServe(
+			application.Addr(),
+			application.Router(),
+		); err != nil {
+			log.Fatal(err)
+		}
 	}
+
 }
