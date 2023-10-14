@@ -258,7 +258,7 @@ func Test_application_jsonHandler(t *testing.T) {
 			},
 		},
 		{
-			name:        "should fail with unmarshal error",
+			name:        "should return error if url is empty",
 			request:     "/api/shorten",
 			requestBody: `{"urm": "https://yandex.ru"}`,
 			prepare:     func(s *mocks.MockService) {},
@@ -275,6 +275,15 @@ func Test_application_jsonHandler(t *testing.T) {
 					SaveURL(gomock.Any(), "https://ya.ru").
 					Return("", errors.New("internal error"))
 			},
+			want: want{
+				statusCode: http.StatusInternalServerError,
+			},
+		},
+		{
+			name:        "should return unmarshal error",
+			request:     "/api/shorten",
+			requestBody: `"url": "https://ya.ru"`,
+			prepare:     func(s *mocks.MockService) {},
 			want: want{
 				statusCode: http.StatusInternalServerError,
 			},
@@ -409,6 +418,15 @@ func Test_application_batchHandler(t *testing.T) {
 				statusCode: http.StatusInternalServerError,
 			},
 		},
+		{
+			name:        "should return unmarshal error",
+			request:     "/api/shorten/batch",
+			requestBody: `{"correlation_id": "1", "original_url": "https://ya.ru"}`,
+			prepare:     func(s *mocks.MockService) {},
+			want: want{
+				statusCode: http.StatusInternalServerError,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -532,6 +550,19 @@ func Test_application_deleteURLsHandler(t *testing.T) {
 			prepare: func(s *mocks.MockService) {},
 			want: want{
 				statusCode: http.StatusInternalServerError,
+			},
+		},
+		{
+			name:        "should log delete error",
+			request:     "/api/user/urls",
+			requestBody: `["6qxTVvsy", "RTfd56hn", "Jlfd67ds"]`,
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					DeleteURLs(gomock.Any(), []string{"6qxTVvsy", "RTfd56hn", "Jlfd67ds"}).
+					Return(errors.New("failed to delete"))
+			},
+			want: want{
+				statusCode: http.StatusAccepted,
 			},
 		},
 	}
