@@ -16,9 +16,12 @@ cmd/shortener/main
 cmd/shortener/shortener
 cmd/staticlint/staticlint
 
-
+# Keys and certs
 /cmd/shortener/cert.pem
 /cmd/shortener/key.pem
+
+# Config
+config.json
 
 # Dependency directories (remove the comment below to include it)
 vendor/
