@@ -23,19 +23,18 @@ type Config struct {
 func Load() Config {
 	var c Config
 
-	configPath := flag.String("c", "", "path to config file")
-	flag.Parse()
-	if err := c.loadJSON(*configPath); err != nil {
-		log.Println("can't load config file: ", err)
-	}
-
 	addr := flag.String("a", "localhost:8080", "input server address in a form host:port")
 	baseURL := flag.String("b", "http://localhost:8080", "base address for short url")
 	logLevel := flag.String("l", "info", "log lever")
 	storageFilePath := flag.String("f", "/tmp/short-url-db.json", "path to storage file")
 	databaseDSN := flag.String("d", "", "sql database dsn")
 	enableHTTPS := flag.Bool("s", false, "enable HTTPS on server")
+	configPath := flag.String("c", "", "path to config file")
 	flag.Parse()
+
+	if err := c.loadJSON(*configPath); err != nil {
+		log.Println("can't load config file: ", err)
+	}
 
 	c.Addr = *addr
 	c.BaseURL = *baseURL
