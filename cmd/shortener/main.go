@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
@@ -37,27 +42,42 @@ func main() {
 		log.Fatal(err)
 	}
 
-	srv := service.NewService(c.BaseURL, store, lgr)
-	application := app.NewApp(c.Addr, c.JWTSecret, srv, lgr)
+	srvc := service.NewService(c.BaseURL, store, lgr)
+	application := app.NewApp(c.Addr, c.JWTSecret, srvc, lgr)
+
+	server := http.Server{
+		Addr:    application.Addr(),
+		Handler: application.Router(),
+	}
+
+	idleConnsClosed := make(chan struct{})
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+		<-sigint
+
+		if err := server.Shutdown(context.Background()); err != nil {
+			log.Printf("HTTP server Shutdown: %v", err)
+		}
+
+		close(idleConnsClosed)
+	}()
 
 	lgr.Info("Server is running", zap.String("address", application.Addr()))
 
 	if c.EnableHTTPS {
-		if err := http.ListenAndServeTLS(
-			application.Addr(),
+		if err := server.ListenAndServeTLS(
 			"cmd/shortener/cert.pem",
 			"cmd/shortener/key.pem",
-			application.Router(),
-		); err != nil {
-			log.Fatal(err)
+		); !errors.Is(err, http.ErrServerClosed) {
+			lgr.Fatal("url shortener server error", zap.Error(err))
 		}
 	} else {
-		if err := http.ListenAndServe(
-			application.Addr(),
-			application.Router(),
-		); err != nil {
-			log.Fatal(err)
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			lgr.Fatal("url shortener server error", zap.Error(err))
 		}
 	}
 
+	<-idleConnsClosed
+	lgr.Info("Server Shutdown gracefully", zap.String("address", application.Addr()))
 }
