@@ -16,7 +16,8 @@ type Config struct {
 	StorageFilePath string `json:"file_storage_path"` // The path to the file where the server will store short URL data.
 	DatabaseDSN     string `json:"database_dsn"`      // The SQL database DSN (Data Source Name) to connect to the database.
 	JWTSecret       string // The secret key used in JWT for authentication.
-	EnableHTTPS     bool   `json:"enable_https"` // Enable HTTPS on server
+	TrustedSubnet   string `json:"trusted_subnet"` // Trusted subnet
+	EnableHTTPS     bool   `json:"enable_https"`   // Enable HTTPS on server
 }
 
 // Load reads command-line flags and environment variables to populate a Config object.
@@ -30,6 +31,7 @@ func Load() Config {
 	databaseDSN := flag.String("d", "", "sql database dsn")
 	enableHTTPS := flag.Bool("s", false, "enable HTTPS on server")
 	configPath := flag.String("c", "", "path to config file")
+	trustedSubnet := flag.String("t", "", "trusted subnet")
 	flag.Parse()
 
 	if err := c.loadJSON(*configPath); err != nil {
@@ -42,6 +44,7 @@ func Load() Config {
 	c.StorageFilePath = *storageFilePath
 	c.DatabaseDSN = *databaseDSN
 	c.EnableHTTPS = *enableHTTPS
+	c.TrustedSubnet = *trustedSubnet
 
 	c.loadEnvVars()
 
@@ -99,5 +102,9 @@ func (c *Config) loadEnvVars() {
 		c.JWTSecret = envJWTSecret
 	} else {
 		c.JWTSecret = "key_for_studying"
+	}
+
+	if envTrustedSubnet := os.Getenv("TRUSTED_SUBNET"); envTrustedSubnet != "" {
+		c.TrustedSubnet = envTrustedSubnet
 	}
 }

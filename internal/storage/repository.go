@@ -14,5 +14,6 @@ type Repository interface {
 	GetURLsByUserID(ctx context.Context, userID string) ([]entity.URLRecord, error)
 	CheckExistence(ctx context.Context, shortURL, userID string) error
 	DeleteURLBatch(urls []string, user string) error
+	GetStats(ctx context.Context) (*entity.Stats, error)
 	Ping() error
 }

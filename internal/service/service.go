@@ -20,6 +20,7 @@ type Service interface {
 	GetURL(ctx context.Context, shortURL string) (string, error)
 	GetURLsByUserID(ctx context.Context) ([]models.UserURLsResponse, error)
 	DeleteURLs(ctx context.Context, urls []string) error
+	GetStats(ctx context.Context) (*models.StatsResponse, error)
 	PingDB() error
 }
 
@@ -174,6 +175,21 @@ func (s *service) DeleteURLs(ctx context.Context, urls []string) error {
 // PingDB checks the current status of the database.
 func (s *service) PingDB() error {
 	return s.Storage.Ping()
+}
+
+// GetStats retrieves the statistical data about the URLs and users of the service.
+func (s *service) GetStats(ctx context.Context) (*models.StatsResponse, error) {
+	stats, err := s.Storage.GetStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &models.StatsResponse{
+		URLs:  stats.URLs,
+		Users: stats.Users,
+	}
+
+	return resp, nil
 }
 
 func (s *service) startURLDeletionWorker(interval time.Duration, batchSize int) {

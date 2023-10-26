@@ -43,7 +43,7 @@ func main() {
 	}
 
 	srvc := service.NewService(c.BaseURL, store, lgr)
-	application := app.NewApp(c.Addr, c.JWTSecret, srvc, lgr)
+	application := app.NewApp(&c, srvc, lgr)
 
 	server := http.Server{
 		Addr:    application.Addr(),
