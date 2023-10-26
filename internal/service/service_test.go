@@ -484,6 +484,134 @@ func TestService_DeleteURLs(t *testing.T) {
 	}
 }
 
+func TestService_GetStats(t *testing.T) {
+	service := setupService()
+
+	type want struct {
+		resp *models.StatsResponse
+		err  error
+	}
+
+	tests := []struct {
+		name    string
+		prepare func(s *mocks.MockRepository)
+		want    want
+	}{
+		{
+			name: "should get stats successfully",
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					GetStats(gomock.Any()).
+					Return(&entity.Stats{
+						URLs:  13,
+						Users: 10,
+					}, nil)
+			},
+			want: want{
+				resp: &models.StatsResponse{
+					URLs:  13,
+					Users: 10,
+				},
+			},
+		},
+		{
+			name: "should fail while getting stats",
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					GetStats(gomock.Any()).
+					Return(nil, errInternal)
+			},
+			want: want{
+				err: errInternal,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			storage := mocks.NewMockRepository(ctrl)
+
+			tt.prepare(storage)
+			service.Storage = storage
+
+			resp, err := service.GetStats(context.Background())
+
+			if tt.want.err != nil {
+				assert.Equal(t, tt.want.err, err)
+			}
+
+			assert.Equal(t, tt.want.resp, resp)
+		})
+	}
+}
+
+func Test_service_handleDeletion(t *testing.T) {
+	service := setupService()
+
+	tasks := []models.URLDeletionTask{
+		{
+			UserID: "testuser1",
+			URLs: []string{
+				"http://test1.com",
+				"http://test2.com",
+			},
+		},
+		{
+			UserID: "testuser2",
+			URLs: []string{
+				"http://test3.com",
+				"http://test4.com",
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		prepare func(s *mocks.MockRepository)
+	}{
+		{
+			name: "should delete urls successfully",
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					DeleteURLBatch(gomock.Any(), gomock.Any()).
+					Return(nil).
+					Times(2)
+			},
+		},
+		{
+			name: "should delete one url successfully",
+			prepare: func(s *mocks.MockRepository) {
+				s.EXPECT().
+					DeleteURLBatch(gomock.Any(), gomock.Any()).
+					Return(nil)
+				s.EXPECT().
+					DeleteURLBatch(gomock.Any(), gomock.Any()).
+					Return(errInternal)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			storage := mocks.NewMockRepository(ctrl)
+
+			tt.prepare(storage)
+			service.Storage = storage
+			service.semaphore = newSemaphore(5)
+
+			service.handleDeletion(tasks)
+
+			for {
+				if len(service.semaphore.semaCh) == 0 {
+					return
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkService_SaveBatch(b *testing.B) {
 	service := setupService()
 	ctrl := gomock.NewController(b)

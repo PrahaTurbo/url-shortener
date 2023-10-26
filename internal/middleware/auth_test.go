@@ -24,9 +24,23 @@ func TestAuth(t *testing.T) {
 			status: http.StatusUnauthorized,
 		},
 		{
-			name:   "valid JWT",
-			cookie: func() *http.Cookie { c, _ := createJWTAuthCookie(testJWTsecret); return c }(),
+			name: "valid JWT",
+			cookie: func() *http.Cookie {
+				c, _ := createJWTAuthCookie(testJWTsecret)
+
+				return c
+			}(),
 			status: http.StatusOK,
+		},
+		{
+			name:   "invalid cookie name",
+			cookie: &http.Cookie{Name: "invalid name"},
+			status: http.StatusOK,
+		},
+		{
+			name:   "user id is empty in claims",
+			cookie: &http.Cookie{Name: jwtTokenCookieName, Value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOiIifQ.PaDvfASoSWvIy1N_mk6kMWua8kMe27k7pfSxe7vK17I"},
+			status: http.StatusUnauthorized,
 		},
 	}
 

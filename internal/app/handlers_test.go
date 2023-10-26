@@ -585,3 +585,51 @@ func Test_application_deleteURLsHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestStatsHandler(t *testing.T) {
+	tests := []struct {
+		name    string
+		prepare func(s *mocks.MockService)
+		want    int
+	}{
+		{
+			name: "should get stats successfully",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					GetStats(gomock.Any()).
+					Return(&models.StatsResponse{
+						URLs:  1234,
+						Users: 223,
+					}, nil)
+			},
+			want: http.StatusOK,
+		},
+		{
+			name: "should return error if GetStats fails",
+			prepare: func(s *mocks.MockService) {
+				s.EXPECT().
+					GetStats(gomock.Any()).
+					Return(nil, errors.New("internal error"))
+			},
+			want: http.StatusInternalServerError,
+		},
+	}
+
+	app := setupTestApp()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			service := mocks.NewMockService(ctrl)
+
+			tt.prepare(service)
+			app.srv = service
+
+			request := httptest.NewRequest(http.MethodGet, "/api/internal/stats", nil)
+			w := httptest.NewRecorder()
+
+			app.StatsHandler(w, request)
+			assert.Equal(t, tt.want, w.Code)
+		})
+	}
+}

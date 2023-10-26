@@ -24,7 +24,7 @@ func AdminAuth(subnet string) func(next http.Handler) http.Handler {
 			ip := net.ParseIP(ipStr)
 
 			if !trustNet.Contains(ip) {
-				w.WriteHeader(http.StatusUnauthorized)
+				w.WriteHeader(http.StatusForbidden)
 				return
 			}
 
