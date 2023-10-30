@@ -16,9 +16,9 @@ import (
 	"google.golang.org/grpc"
 
 	cfg "github.com/PrahaTurbo/url-shortener/config"
-	"github.com/PrahaTurbo/url-shortener/internal/app"
 	"github.com/PrahaTurbo/url-shortener/internal/auth"
 	"github.com/PrahaTurbo/url-shortener/internal/grpcapp"
+	"github.com/PrahaTurbo/url-shortener/internal/httpapp"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/provider"
@@ -50,20 +50,20 @@ func main() {
 	srvc := service.NewService(c.BaseURL, store, lgr)
 	auth := auth.NewAuth(c.JWTSecret, c.TrustedSubnet)
 
-	application := app.NewApp(c.Addr, srvc, lgr, auth)
+	httpApp := httpapp.NewHTTPApp(srvc, lgr, auth)
 	httpServer := http.Server{
-		Addr:    application.Addr(),
-		Handler: application.Router(),
+		Addr:    c.Addr,
+		Handler: httpApp.Router(),
 	}
 
-	grpcApplication := grpcapp.NewgRPCShortener(srvc, lgr)
-	listener, err := net.Listen("tcp", ":3200")
+	grpcApp := grpcapp.NewGRPCApp(srvc, lgr)
+	listener, err := net.Listen("tcp", c.GRPCAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(auth.UnaryServerInterceptor))
-	pb.RegisterURLShortenerServer(grpcServer, grpcApplication)
+	pb.RegisterURLShortenerServer(grpcServer, grpcApp)
 
 	idleConnsClosed := make(chan struct{})
 	go func() {
@@ -81,13 +81,13 @@ func main() {
 	}()
 
 	go func() {
-		lgr.Info("gRPC server is running")
+		lgr.Info("gRPC server is running", zap.String("address", c.GRPCAddr))
 		if err := grpcServer.Serve(listener); err != nil {
-			log.Fatal(err)
+			lgr.Fatal("gRPC server error", zap.Error(err))
 		}
 	}()
 
-	lgr.Info("HTTP server is running", zap.String("address", application.Addr()))
+	lgr.Info("HTTP server is running", zap.String("address", c.Addr))
 
 	if c.EnableHTTPS {
 		if err := httpServer.ListenAndServeTLS(

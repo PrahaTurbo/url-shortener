@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/PrahaTurbo/url-shortener/internal/middleware"
+	"github.com/PrahaTurbo/url-shortener/internal/auth"
 )
 
 // Error variables, used in the service
@@ -18,7 +18,7 @@ var (
 )
 
 func extractUserIDFromCtx(ctx context.Context) (string, error) {
-	userIDVal := ctx.Value(middleware.UserIDKey)
+	userIDVal := ctx.Value(auth.UserIDKey)
 	userID, ok := userIDVal.(string)
 	if !ok {
 		return "", fmt.Errorf("cannot extract userID from context")

@@ -12,24 +12,24 @@ import (
 	pb "github.com/PrahaTurbo/url-shortener/proto"
 )
 
-type URLShortener struct {
+type Application struct {
 	pb.UnimplementedURLShortenerServer
 
 	srvc service.Service
 	log  *logger.Logger
 }
 
-func NewgRPCShortener(srvc service.Service, logger *logger.Logger) *URLShortener {
-	return &URLShortener{
+func NewGRPCApp(srvc service.Service, logger *logger.Logger) *Application {
+	return &Application{
 		srvc: srvc,
 		log:  logger,
 	}
 }
 
-func (u *URLShortener) MakeURL(ctx context.Context, in *pb.MakeURLRequest) (*pb.MakeURLResponse, error) {
-	url, err := u.srvc.SaveURL(ctx, in.Url)
+func (a *Application) MakeURL(ctx context.Context, in *pb.MakeURLRequest) (*pb.MakeURLResponse, error) {
+	url, err := a.srvc.SaveURL(ctx, in.Url)
 	if err != nil {
-		u.log.Error("error while saving url", zap.Error(err))
+		a.log.Error("error while saving url", zap.Error(err))
 
 		return nil, status.Errorf(codes.Internal, "internal server error")
 	}
@@ -39,10 +39,10 @@ func (u *URLShortener) MakeURL(ctx context.Context, in *pb.MakeURLRequest) (*pb.
 	return &response, nil
 }
 
-func (u *URLShortener) GetOriginalURL(ctx context.Context, in *pb.GetURLRequest) (*pb.GetURLResponse, error) {
-	originalURL, err := u.srvc.GetURL(ctx, in.ShortUrl)
+func (a *Application) GetOriginalURL(ctx context.Context, in *pb.GetURLRequest) (*pb.GetURLResponse, error) {
+	originalURL, err := a.srvc.GetURL(ctx, in.ShortUrl)
 	if err != nil {
-		u.log.Error("error while getting original url", zap.Error(err))
+		a.log.Error("error while getting original url", zap.Error(err))
 
 		return nil, status.Errorf(codes.Internal, "internal server error")
 	}
@@ -52,10 +52,10 @@ func (u *URLShortener) GetOriginalURL(ctx context.Context, in *pb.GetURLRequest)
 	return &response, nil
 }
 
-func (u *URLShortener) GetUserURLs(ctx context.Context, in *pb.UserURLsRequest) (*pb.UserURLsResponse, error) {
-	urls, err := u.srvc.GetURLsByUserID(ctx)
+func (a *Application) GetUserURLs(ctx context.Context, in *pb.UserURLsRequest) (*pb.UserURLsResponse, error) {
+	urls, err := a.srvc.GetURLsByUserID(ctx)
 	if err != nil {
-		u.log.Error("error getting user urls", zap.Error(err))
+		a.log.Error("error getting user urls", zap.Error(err))
 
 		return nil, status.Errorf(codes.Internal, "internal server error")
 	}
@@ -76,9 +76,9 @@ func (u *URLShortener) GetUserURLs(ctx context.Context, in *pb.UserURLsRequest) 
 	return &response, nil
 }
 
-func (u *URLShortener) DeleteURLs(ctx context.Context, in *pb.DeleteURLsRequest) (*pb.DeleteURLsResponse, error) {
-	if err := u.srvc.DeleteURLs(ctx, in.Urls); err != nil {
-		u.log.Error("error accepting urls for deletion", zap.Error(err))
+func (a *Application) DeleteURLs(ctx context.Context, in *pb.DeleteURLsRequest) (*pb.DeleteURLsResponse, error) {
+	if err := a.srvc.DeleteURLs(ctx, in.Urls); err != nil {
+		a.log.Error("error accepting urls for deletion", zap.Error(err))
 
 		return nil, status.Errorf(codes.Internal, "internal server error")
 	}
@@ -88,10 +88,10 @@ func (u *URLShortener) DeleteURLs(ctx context.Context, in *pb.DeleteURLsRequest)
 	return &response, nil
 }
 
-func (u *URLShortener) PingDB(ctx context.Context, in *pb.PingRequest) (*pb.PingResponse, error) {
+func (a *Application) PingDB(ctx context.Context, in *pb.PingRequest) (*pb.PingResponse, error) {
 	var response pb.PingResponse
 
-	err := u.srvc.PingDB()
+	err := a.srvc.PingDB()
 	switch {
 	case err != nil:
 		response.Status = pb.PingResponse_INACTIVE
@@ -102,10 +102,10 @@ func (u *URLShortener) PingDB(ctx context.Context, in *pb.PingRequest) (*pb.Ping
 	return &response, nil
 }
 
-func (u *URLShortener) GetStats(ctx context.Context, in *pb.StatsRequest) (*pb.StatsResponse, error) {
-	stats, err := u.srvc.GetStats(ctx)
+func (a *Application) GetStats(ctx context.Context, in *pb.StatsRequest) (*pb.StatsResponse, error) {
+	stats, err := a.srvc.GetStats(ctx)
 	if err != nil {
-		u.log.Error("error getting stats", zap.Error(err))
+		a.log.Error("error getting stats", zap.Error(err))
 
 		return nil, status.Errorf(codes.Internal, "internal server error")
 	}

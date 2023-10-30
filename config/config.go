@@ -10,7 +10,8 @@ import (
 
 // Config represents the configuration of the application.
 type Config struct {
-	Addr            string `json:"server_address"`    // The server address, in the form host:port.
+	Addr            string `json:"server_address"` // The server address, in the form host:port.
+	GRPCAddr        string `json:"grc_server_address"`
 	BaseURL         string `json:"base_url"`          // The base URL to which the server responds.
 	LogLevel        string `json:"log_level"`         // The level of logs that should be displayed. Options include "info", "error", and "debug".
 	StorageFilePath string `json:"file_storage_path"` // The path to the file where the server will store short URL data.
@@ -32,6 +33,7 @@ func Load() Config {
 	enableHTTPS := flag.Bool("s", false, "enable HTTPS on server")
 	configPath := flag.String("c", "", "path to config file")
 	trustedSubnet := flag.String("t", "", "trusted subnet")
+	grpcAddr := flag.String("ga", "localhost:3200", "grpc server address in a from host:port")
 	flag.Parse()
 
 	if err := c.loadJSON(*configPath); err != nil {
@@ -45,6 +47,7 @@ func Load() Config {
 	c.DatabaseDSN = *databaseDSN
 	c.EnableHTTPS = *enableHTTPS
 	c.TrustedSubnet = *trustedSubnet
+	c.GRPCAddr = *grpcAddr
 
 	c.loadEnvVars()
 

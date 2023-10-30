@@ -1,4 +1,4 @@
-package app
+package httpapp
 
 import (
 	"context"
@@ -29,7 +29,6 @@ func setupTestApp() Application {
 	log, _ := logger.Initialize("debug")
 
 	return Application{
-		addr:   addr,
 		logger: log,
 	}
 }

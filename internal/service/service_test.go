@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/PrahaTurbo/url-shortener/internal/auth"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
-	"github.com/PrahaTurbo/url-shortener/internal/middleware"
 	"github.com/PrahaTurbo/url-shortener/internal/mocks"
 	"github.com/PrahaTurbo/url-shortener/internal/models"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/entity"
@@ -107,7 +107,7 @@ func TestService_SaveURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			storage := mocks.NewMockRepository(ctrl)
-			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
+			ctx := context.WithValue(context.Background(), auth.UserIDKey, "1")
 
 			if errors.Is(tt.want.err, ErrExtractFromContext) {
 				var k badContextKey = "bad_key"
@@ -174,7 +174,7 @@ func TestService_GetURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			storage := mocks.NewMockRepository(ctrl)
-			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
+			ctx := context.WithValue(context.Background(), auth.UserIDKey, "1")
 
 			tt.prepare(storage)
 			service.Storage = storage
@@ -309,7 +309,7 @@ func TestService_SaveBatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			storage := mocks.NewMockRepository(ctrl)
-			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
+			ctx := context.WithValue(context.Background(), auth.UserIDKey, "1")
 
 			if errors.Is(tt.want.err, ErrExtractFromContext) {
 				var k badContextKey = "bad_key"
@@ -388,7 +388,7 @@ func TestService_GetURLsByUserID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			storage := mocks.NewMockRepository(ctrl)
-			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
+			ctx := context.WithValue(context.Background(), auth.UserIDKey, "1")
 
 			if errors.Is(tt.want.err, ErrExtractFromContext) {
 				var k badContextKey = "bad_key"
@@ -467,7 +467,7 @@ func TestService_DeleteURLs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
+			ctx := context.WithValue(context.Background(), auth.UserIDKey, "1")
 
 			if errors.Is(tt.wantErr, ErrExtractFromContext) {
 				var k badContextKey = "bad_key"
@@ -616,7 +616,7 @@ func BenchmarkService_SaveBatch(b *testing.B) {
 	service := setupService()
 	ctrl := gomock.NewController(b)
 	storage := mocks.NewMockRepository(ctrl)
-	ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
+	ctx := context.WithValue(context.Background(), auth.UserIDKey, "1")
 
 	storage.EXPECT().
 		CheckExistence(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -649,7 +649,7 @@ func BenchmarkService_DeleteURLs(b *testing.B) {
 	ctrl := gomock.NewController(b)
 	storage := mocks.NewMockRepository(ctrl)
 	log, _ := logger.Initialize("debug")
-	ctx := context.WithValue(context.Background(), middleware.UserIDKey, "1")
+	ctx := context.WithValue(context.Background(), auth.UserIDKey, "1")
 
 	storage.EXPECT().
 		DeleteURLBatch(gomock.Any(), gomock.Any()).
