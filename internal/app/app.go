@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/go-chi/chi/v5"
 
-	"github.com/PrahaTurbo/url-shortener/config"
+	"github.com/PrahaTurbo/url-shortener/internal/auth"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
 )
@@ -17,22 +17,20 @@ type App interface {
 
 // Application is an implementation of the App interface.
 type Application struct {
-	addr          string
-	srv           service.Service
-	logger        *logger.Logger
-	jwtSecret     string
-	trustedSubnet string
+	addr   string
+	srv    service.Service
+	logger *logger.Logger
+	auth   *auth.Auth
 }
 
 // NewApp initializes a new Application struct with the provided service, logger, server address and JWT Secret,
 // and returns it as an App interface.
-func NewApp(c *config.Config, srv service.Service, logger *logger.Logger) App {
+func NewApp(address string, srv service.Service, logger *logger.Logger, auth *auth.Auth) App {
 	return &Application{
-		addr:          c.Addr,
-		srv:           srv,
-		logger:        logger,
-		jwtSecret:     c.JWTSecret,
-		trustedSubnet: c.TrustedSubnet,
+		addr:   address,
+		srv:    srv,
+		logger: logger,
+		auth:   auth,
 	}
 }
 

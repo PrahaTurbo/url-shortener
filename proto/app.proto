@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package shortener;
+
+option go_package = "github.com/PrahaTurbo/url-shortener/proto";
+
+message MakeURLRequest {
+  string url = 1;
+}
+
+message MakeURLResponse {
+  string result = 1;
+}
+
+message GetURLRequest {
+  string short_url = 1;
+}
+
+message GetURLResponse {
+  string original_url = 1;
+}
+
+message BatchRequest {
+  message ShortRequest {
+    string correlation_id = 1;
+    string original_url = 2;
+  }
+
+  repeated ShortRequest short_requests = 1;
+}
+
+message BatchResponse {
+  message ShortResponse {
+    string correlation_id = 1;
+    string short_url = 2;
+  }
+
+  repeated ShortResponse short_response = 1;
+}
+
+message UserURLsRequest {}
+
+message UserURLsResponse {
+  message UserURLs {
+    string short_url = 1;
+    string original_url = 2;
+  }
+
+  repeated UserURLs user_urls = 1;
+}
+
+message DeleteURLsRequest {
+  repeated string urls = 1;
+}
+
+message DeleteURLsResponse {
+  enum Status {
+    UNSPECIFIED = 0;
+    ACCEPTED = 1;
+  }
+
+  Status status = 1;
+}
+
+message PingRequest {}
+
+message PingResponse {
+  enum Status {
+    UNSPECIFIED = 0;
+    ACTIVE = 1;
+    INACTIVE = 2;
+  }
+
+  Status status = 1;
+}
+
+message StatsRequest {}
+
+message StatsResponse {
+  int64 urls = 1;
+  int64 users = 2;
+}
+
+service URLShortener {
+  rpc MakeURL(MakeURLRequest) returns (MakeURLResponse);
+  rpc GetOriginalURL(GetURLRequest) returns (GetURLResponse);
+  rpc GetUserURLs(UserURLsRequest) returns (UserURLsResponse);
+  rpc DeleteURLs(DeleteURLsRequest) returns (DeleteURLsResponse);
+  rpc PingDB(PingRequest) returns (PingResponse);
+  rpc GetStats(StatsRequest) returns (StatsResponse);
+}
+

@@ -29,9 +29,8 @@ func setupTestApp() Application {
 	log, _ := logger.Initialize("debug")
 
 	return Application{
-		addr:      addr,
-		logger:    log,
-		jwtSecret: "secret_key",
+		addr:   addr,
+		logger: log,
 	}
 }
 

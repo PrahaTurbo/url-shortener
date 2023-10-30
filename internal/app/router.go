@@ -18,7 +18,7 @@ func (a *Application) Router() chi.Router {
 	r.Use(appmiddleware.Decompress)
 
 	r.Group(func(r chi.Router) {
-		r.Use(appmiddleware.Auth(a.jwtSecret))
+		r.Use(a.auth.BasicMiddlewareHTTP)
 
 		r.Post("/", a.MakeURLHandler)
 		r.Get("/{id}", a.GetOriginHandler)
@@ -30,7 +30,8 @@ func (a *Application) Router() chi.Router {
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(appmiddleware.AdminAuth(a.trustedSubnet))
+		r.Use(a.auth.AdminMiddlewareHTTP)
+
 		r.Get("/api/internal/stats", a.StatsHandler)
 	})
 
