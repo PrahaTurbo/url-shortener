@@ -1,4 +1,4 @@
-package app
+package httpapp
 
 import (
 	"encoding/json"
@@ -199,5 +199,23 @@ func (a *Application) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) 
 
 	if err := a.srv.DeleteURLs(r.Context(), shortURLs); err != nil {
 		a.logger.Debug("cannot delete short urls for user", zap.Error(err))
+	}
+}
+
+// StatsHandler is an HTTP handler function that retrieves statistical data
+// about the usage of the application.
+func (a *Application) StatsHandler(w http.ResponseWriter, r *http.Request) {
+	stats, err := a.srv.GetStats(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("content-type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		a.logger.Debug("error encoding response", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }

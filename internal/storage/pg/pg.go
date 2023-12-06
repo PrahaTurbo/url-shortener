@@ -211,6 +211,30 @@ func (s *SQLStorage) Ping() error {
 	return s.db.Ping()
 }
 
+// GetStats retrieves statistical data about the URLs and users in the SQL database.
+func (s *SQLStorage) GetStats(ctx context.Context) (*entity.Stats, error) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*3)
+	defer cancel()
+
+	query := `
+		SELECT 
+  (SELECT COUNT(DISTINCT user_id) FROM short_urls WHERE is_deleted = false) AS unique_users,
+  (SELECT COUNT(short_url) FROM short_urls WHERE is_deleted = false) AS short_urls`
+
+	row := s.db.QueryRowContext(timeoutCtx, query)
+
+	var stats entity.Stats
+	if err := row.Scan(&stats.Users, &stats.URLs); err != nil {
+		return nil, err
+	}
+
+	if err := row.Err(); err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
+}
+
 // OpenDB opens a SQL database connection given a DSN string.
 func OpenDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("pgx", dsn)

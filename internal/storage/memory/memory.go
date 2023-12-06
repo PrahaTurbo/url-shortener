@@ -143,6 +143,19 @@ func (s *InMemStorage) Ping() error {
 	return errors.New("no connection to sql database")
 }
 
+// GetStats retrieves statistical data about the URLs and users.
+func (s *InMemStorage) GetStats(_ context.Context) (*entity.Stats, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	stats := &entity.Stats{
+		URLs:  len(s.urls),
+		Users: len(s.users),
+	}
+
+	return stats, nil
+}
+
 func (s *InMemStorage) restoreFromFile() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

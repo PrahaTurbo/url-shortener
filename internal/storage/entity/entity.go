@@ -8,3 +8,9 @@ type URLRecord struct {
 	UserID      string `json:"user_id"`
 	DeletedFlag bool   `json:"is_deleted,omitempty"`
 }
+
+// Stats represents statistical data about the URLs and Users.
+type Stats struct {
+	URLs  int
+	Users int
+}

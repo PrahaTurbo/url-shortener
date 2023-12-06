@@ -34,3 +34,10 @@ type URLDeletionTask struct {
 	UserID string
 	URLs   []string
 }
+
+// StatsResponse is the structure of a response from the StatsHandler.
+// It includes the total count of URLs and Users in the system.
+type StatsResponse struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
+}

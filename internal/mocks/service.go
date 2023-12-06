@@ -8,9 +8,8 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "go.uber.org/mock/gomock"
-
 	models "github.com/PrahaTurbo/url-shortener/internal/models"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockService is a mock of Service interface.
@@ -48,6 +47,21 @@ func (m *MockService) DeleteURLs(ctx context.Context, urls []string) error {
 func (mr *MockServiceMockRecorder) DeleteURLs(ctx, urls interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteURLs", reflect.TypeOf((*MockService)(nil).DeleteURLs), ctx, urls)
+}
+
+// GetStats mocks base method.
+func (m *MockService) GetStats(ctx context.Context) (*models.StatsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStats", ctx)
+	ret0, _ := ret[0].(*models.StatsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetStats indicates an expected call of GetStats.
+func (mr *MockServiceMockRecorder) GetStats(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStats", reflect.TypeOf((*MockService)(nil).GetStats), ctx)
 }
 
 // GetURL mocks base method.

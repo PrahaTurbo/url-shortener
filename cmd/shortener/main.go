@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,12 +13,16 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 
 	cfg "github.com/PrahaTurbo/url-shortener/config"
-	"github.com/PrahaTurbo/url-shortener/internal/app"
+	"github.com/PrahaTurbo/url-shortener/internal/auth"
+	"github.com/PrahaTurbo/url-shortener/internal/grpcapp"
+	"github.com/PrahaTurbo/url-shortener/internal/httpapp"
 	"github.com/PrahaTurbo/url-shortener/internal/logger"
 	"github.com/PrahaTurbo/url-shortener/internal/service"
 	"github.com/PrahaTurbo/url-shortener/internal/storage/provider"
+	pb "github.com/PrahaTurbo/url-shortener/proto"
 )
 
 var (
@@ -43,12 +48,22 @@ func main() {
 	}
 
 	srvc := service.NewService(c.BaseURL, store, lgr)
-	application := app.NewApp(c.Addr, c.JWTSecret, srvc, lgr)
+	auth := auth.NewAuth(c.JWTSecret, c.TrustedSubnet)
 
-	server := http.Server{
-		Addr:    application.Addr(),
-		Handler: application.Router(),
+	httpApp := httpapp.NewHTTPApp(srvc, lgr, auth)
+	httpServer := http.Server{
+		Addr:    c.Addr,
+		Handler: httpApp.Router(),
 	}
+
+	grpcApp := grpcapp.NewGRPCApp(srvc, lgr)
+	listener, err := net.Listen("tcp", c.GRPCAddr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(auth.UnaryServerInterceptor))
+	pb.RegisterURLShortenerServer(grpcServer, grpcApp)
 
 	idleConnsClosed := make(chan struct{})
 	go func() {
@@ -56,28 +71,37 @@ func main() {
 		signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 		<-sigint
 
-		if err := server.Shutdown(context.Background()); err != nil {
-			log.Printf("HTTP server Shutdown: %v", err)
+		grpcServer.GracefulStop()
+
+		if err := httpServer.Shutdown(context.Background()); err != nil {
+			lgr.Error("HTTP server shutdown error", zap.Error(err))
 		}
 
 		close(idleConnsClosed)
 	}()
 
-	lgr.Info("Server is running", zap.String("address", application.Addr()))
+	go func() {
+		lgr.Info("gRPC server is running", zap.String("address", c.GRPCAddr))
+		if err := grpcServer.Serve(listener); err != nil {
+			lgr.Fatal("gRPC server error", zap.Error(err))
+		}
+	}()
+
+	lgr.Info("HTTP server is running", zap.String("address", c.Addr))
 
 	if c.EnableHTTPS {
-		if err := server.ListenAndServeTLS(
+		if err := httpServer.ListenAndServeTLS(
 			"cmd/shortener/cert.pem",
 			"cmd/shortener/key.pem",
 		); !errors.Is(err, http.ErrServerClosed) {
-			lgr.Fatal("url shortener server error", zap.Error(err))
+			lgr.Fatal("HTTP server error", zap.Error(err))
 		}
 	} else {
-		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			lgr.Fatal("url shortener server error", zap.Error(err))
+		if err := httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			lgr.Fatal("HTTP server error", zap.Error(err))
 		}
 	}
 
 	<-idleConnsClosed
-	lgr.Info("Server Shutdown gracefully", zap.String("address", application.Addr()))
+	lgr.Info("HTTP and gRPC servers shutdown gracefully")
 }

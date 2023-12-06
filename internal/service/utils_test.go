@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/PrahaTurbo/url-shortener/internal/middleware"
+	"github.com/PrahaTurbo/url-shortener/internal/auth"
 )
 
 func TestService_generateShortURL(t *testing.T) {
@@ -61,12 +61,12 @@ func Test_extractUserIDFromCtx(t *testing.T) {
 	}{
 		{
 			name: "should return valid user ID",
-			ctx:  context.WithValue(context.Background(), middleware.UserIDKey, "1"),
+			ctx:  context.WithValue(context.Background(), auth.UserIDKey, "1"),
 			want: "1",
 		},
 		{
 			name:    "should return error if invalid user ID ",
-			ctx:     context.WithValue(context.Background(), middleware.UserIDKey, 123),
+			ctx:     context.WithValue(context.Background(), auth.UserIDKey, 123),
 			wantErr: true,
 		},
 		{

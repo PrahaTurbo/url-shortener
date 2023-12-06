@@ -1,4 +1,4 @@
-package app
+package httpapp
 
 import (
 	"github.com/go-chi/chi/v5"
@@ -14,17 +14,26 @@ func (a *Application) Router() chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(a.logger.RequestLogger)
-	r.Use(appmiddleware.Auth(a.jwtSecret))
 	r.Use(libmiddleware.Compress(5, "application/json", "text/html"))
 	r.Use(appmiddleware.Decompress)
 
-	r.Post("/", a.MakeURLHandler)
-	r.Get("/{id}", a.GetOriginHandler)
-	r.Post("/api/shorten", a.JSONHandler)
-	r.Post("/api/shorten/batch", a.BatchHandler)
-	r.Get("/api/user/urls", a.GetUserURLsHandler)
-	r.Delete("/api/user/urls", a.DeleteURLsHandler)
-	r.Get("/ping", a.PingHandler)
+	r.Group(func(r chi.Router) {
+		r.Use(a.auth.BasicMiddlewareHTTP)
+
+		r.Post("/", a.MakeURLHandler)
+		r.Get("/{id}", a.GetOriginHandler)
+		r.Post("/api/shorten", a.JSONHandler)
+		r.Post("/api/shorten/batch", a.BatchHandler)
+		r.Get("/api/user/urls", a.GetUserURLsHandler)
+		r.Delete("/api/user/urls", a.DeleteURLsHandler)
+		r.Get("/ping", a.PingHandler)
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Use(a.auth.AdminMiddlewareHTTP)
+
+		r.Get("/api/internal/stats", a.StatsHandler)
+	})
 
 	return r
 }
